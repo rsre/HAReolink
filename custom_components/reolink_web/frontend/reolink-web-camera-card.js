@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.3.2";
+const CARD_VERSION = "0.4.0";
 
 class ReolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -30,7 +30,15 @@ class ReolinkWebCameraCard extends HTMLElement {
       schema: [
         { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
         { name: "title", selector: { text: {} } },
+        { name: "hide_title", selector: { boolean: {} } },
+        { name: "start_unmuted", selector: { boolean: {} } },
       ],
+      computeLabel: (schema) => ({
+        entity: "Camera entity",
+        title: "Title",
+        hide_title: "Hide card title",
+        start_unmuted: "Load stream unmuted",
+      })[schema.name],
     };
   }
 
@@ -38,8 +46,15 @@ class ReolinkWebCameraCard extends HTMLElement {
     if (!config.entity || !config.entity.startsWith("camera.")) {
       throw new Error("A camera entity is required");
     }
-    const changed = this._config?.entity !== config.entity;
-    this._config = { ...config };
+    const previous = this._config;
+    const changed = previous?.entity !== config.entity;
+    const muteDefaultChanged = previous?.start_unmuted !== config.start_unmuted;
+    this._config = {
+      hide_title: false,
+      start_unmuted: false,
+      ...config,
+    };
+    if (!previous || muteDefaultChanged) this._muted = !this._config.start_unmuted;
     this._render();
     if (changed && this.isConnected) {
       this._restart();
@@ -89,7 +104,7 @@ class ReolinkWebCameraCard extends HTMLElement {
         :host { display: block; }
         ha-card { overflow: hidden; background: var(--ha-card-background, var(--card-background-color)); }
         .header { padding: 12px 16px; font-size: 16px; font-weight: 500; }
-        .stage { position: relative; background: #000; aspect-ratio: 16 / 9; }
+        .stage { position: relative; background: #000; aspect-ratio: 16 / 9; cursor: pointer; }
         video { width: 100%; height: 100%; display: block; object-fit: contain; background: #000; }
         .status { position: absolute; inset: auto 10px 10px; padding: 6px 9px; border-radius: 6px;
           color: white; background: rgba(0,0,0,.68); font-size: 12px; pointer-events: none; }
@@ -105,19 +120,19 @@ class ReolinkWebCameraCard extends HTMLElement {
         .talk:disabled { opacity: .55; cursor: wait; }
       </style>
       <ha-card>
-        <div class="header"></div>
-        <div class="stage">
+        ${this._config.hide_title ? "" : '<div class="header"></div>'}
+        <div class="stage" role="button" tabindex="0" aria-label="Open camera stream">
           <video autoplay playsinline muted></video>
           <div class="status">Connecting…</div>
         </div>
         <div class="controls">
           <button class="sound" type="button" title="Enable camera audio" aria-label="Enable camera audio">🔇</button>
           <button class="talk" type="button" aria-label="Hold to talk">Hold to talk</button>
-          <button class="fullscreen" type="button" title="Fullscreen" aria-label="Fullscreen">⛶</button>
         </div>
       </ha-card>`;
 
     this._video = this.shadowRoot.querySelector("video");
+    this._video.muted = this._muted;
     this._status = this.shadowRoot.querySelector(".status");
     this._talkButton = this.shadowRoot.querySelector(".talk");
     this._soundButton = this.shadowRoot.querySelector(".sound");
@@ -129,10 +144,13 @@ class ReolinkWebCameraCard extends HTMLElement {
     this._talkButton.addEventListener("keydown", this._talkKeyDown);
     this._talkButton.addEventListener("keyup", this._talkKeyUp);
     this._soundButton.addEventListener("click", this._toggleSound);
-    this.shadowRoot.querySelector(".fullscreen").addEventListener("click", () => {
-      this.shadowRoot.querySelector(".stage").requestFullscreen?.();
+    const stage = this.shadowRoot.querySelector(".stage");
+    stage.addEventListener("click", this._openMoreInfo);
+    stage.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") this._openMoreInfo(event);
     });
     this._updateTitle();
+    this._updateSoundButton();
   }
 
   _updateTitle() {
@@ -145,6 +163,15 @@ class ReolinkWebCameraCard extends HTMLElement {
   _setStatus(message) {
     if (this._status) this._status.textContent = message || "";
   }
+
+  _openMoreInfo = (event) => {
+    event.preventDefault();
+    this.dispatchEvent(new CustomEvent("hass-more-info", {
+      bubbles: true,
+      composed: true,
+      detail: { entityId: this._config.entity },
+    }));
+  };
 
   async _restart() {
     await this._cleanup();
@@ -168,7 +195,19 @@ class ReolinkWebCameraCard extends HTMLElement {
       this._remoteStream = new MediaStream();
       peer.ontrack = (event) => {
         this._remoteStream.addTrack(event.track);
-        if (this._video) this._video.srcObject = this._remoteStream;
+        if (this._video) {
+          this._video.srcObject = this._remoteStream;
+          this._video.muted = this._muted;
+          this._video.play().catch(() => {
+            if (!this._muted) {
+              this._muted = true;
+              this._video.muted = true;
+              this._updateSoundButton();
+              this._setStatus("Tap the speaker button to enable audio");
+              this._video.play().catch(() => undefined);
+            }
+          });
+        }
       };
       peer.onicecandidate = (event) => this._handleLocalCandidate(event.candidate);
       peer.onconnectionstatechange = () => {
