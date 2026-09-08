@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.2";
+const CARD_VERSION = "0.6.0";
 
 class VideolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -14,6 +14,8 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._pendingCandidates = [];
     this._unsubscribe = undefined;
     this._starting = false;
+    this._streamReady = false;
+    this._micPending = false;
     this._talking = false;
     this._talkRequested = false;
     this._muted = true;
@@ -123,8 +125,12 @@ class VideolinkWebCameraCard extends HTMLElement {
         button:hover { filter: brightness(1.08); }
         button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
         .talk { min-width: 132px; background: var(--primary-color); color: var(--text-primary-color, white); }
+        .talk.loading::before { content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 8px;
+          border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -2px;
+          animation: spin .8s linear infinite; }
         .talk.active { background: var(--error-color, #db4437); transform: scale(.97); }
         .talk:disabled { opacity: .55; cursor: wait; }
+        @keyframes spin { to { transform: rotate(360deg); } }
       </style>
       <ha-card>
         ${this._config.hide_title ? "" : '<div class="header"></div>'}
@@ -144,10 +150,6 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._video.muted = this._muted;
     this._status = this.shadowRoot.querySelector(".status");
     this._talkButton = this.shadowRoot.querySelector(".talk");
-    if (!window.isSecureContext) {
-      this._talkButton.disabled = true;
-      this._talkButton.title = "HTTPS is required for microphone access";
-    }
     this._soundButton = this.shadowRoot.querySelector(".sound");
 
     this._talkButton.addEventListener("pointerdown", this._beginTalk);
@@ -166,6 +168,7 @@ class VideolinkWebCameraCard extends HTMLElement {
     }
     this._updateTitle();
     this._updateSoundButton();
+    this._updateTalkButton();
   }
 
   _updateTitle() {
@@ -197,6 +200,8 @@ class VideolinkWebCameraCard extends HTMLElement {
   async _start() {
     if (this._starting || this._peer || !this._hass || !this._config || document.hidden) return;
     this._starting = true;
+    this._streamReady = false;
+    this._updateTalkButton();
     this._setStatus("Connecting…");
     try {
       if (!window.RTCPeerConnection) throw new Error("This browser does not support WebRTC");
@@ -227,9 +232,15 @@ class VideolinkWebCameraCard extends HTMLElement {
       };
       peer.onicecandidate = (event) => this._handleLocalCandidate(event.candidate);
       peer.onconnectionstatechange = () => {
-        if (peer.connectionState === "connected") this._setStatus("");
+        if (peer.connectionState === "connected") {
+          this._streamReady = true;
+          this._setStatus("");
+          this._updateTalkButton();
+        }
         if (["failed", "disconnected"].includes(peer.connectionState)) {
+          this._streamReady = false;
           this._setStatus(`WebRTC ${peer.connectionState}`);
+          this._updateTalkButton();
         }
       };
 
@@ -296,9 +307,11 @@ class VideolinkWebCameraCard extends HTMLElement {
       this._setStatus("HTTPS is required for microphone access");
       return;
     }
-    if (this._talking || !this._audioSender) return;
+    if (this._talking || this._micPending || !this._streamReady || !this._audioSender) return;
     this._talkRequested = true;
-    this._talkButton.disabled = true;
+    this._micPending = true;
+    if (event.pointerId != null) this._talkButton.setPointerCapture?.(event.pointerId);
+    this._updateTalkButton();
     try {
       this._micStream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -312,21 +325,21 @@ class VideolinkWebCameraCard extends HTMLElement {
       const track = this._micStream.getAudioTracks()[0];
       await this._audioSender.replaceTrack(track);
       this._talking = true;
+      this._micPending = false;
       // Keep inbound audio muted while transmitting to prevent feedback. Once
       // PTT ends, listening is enabled automatically so the reply is audible.
       this._mutedBeforeTalk = false;
       this._muted = true;
       if (this._video) this._video.muted = true;
       if (this._soundButton) this._soundButton.disabled = true;
-      this._talkButton.classList.add("active");
-      this._talkButton.textContent = "Talking…";
+      this._updateTalkButton();
       this._updateSoundButton();
-      if (event.pointerId != null) this._talkButton.setPointerCapture?.(event.pointerId);
     } catch (error) {
       this._setStatus(`Microphone unavailable: ${error?.message || error}`);
       await this._stopMicrophone();
     } finally {
-      this._talkButton.disabled = false;
+      this._micPending = false;
+      this._updateTalkButton();
     }
   };
 
@@ -351,6 +364,7 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._micStream?.getTracks().forEach((track) => track.stop());
     this._micStream = undefined;
     this._talking = false;
+    this._micPending = false;
     this._mutedBeforeTalk = undefined;
     if (restoreMuted !== undefined) {
       this._muted = restoreMuted;
@@ -358,10 +372,7 @@ class VideolinkWebCameraCard extends HTMLElement {
     }
     if (this._soundButton) this._soundButton.disabled = false;
     this._updateSoundButton();
-    if (this._talkButton) {
-      this._talkButton.classList.remove("active");
-      this._talkButton.textContent = "Hold to talk";
-    }
+    this._updateTalkButton();
   }
 
   _toggleSound = () => {
@@ -379,7 +390,26 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._soundButton.setAttribute("aria-label", this._soundButton.title);
   }
 
+  _updateTalkButton() {
+    if (!this._talkButton) return;
+    const insecure = !window.isSecureContext;
+    const loading = !insecure && (!this._streamReady || this._micPending);
+    this._talkButton.disabled = insecure || !this._streamReady;
+    this._talkButton.classList.toggle("loading", loading);
+    this._talkButton.classList.toggle("active", this._talking);
+    this._talkButton.textContent = insecure
+      ? "HTTPS required"
+      : this._talking
+        ? "Talking…"
+        : loading
+          ? "Loading…"
+          : "Hold to talk";
+    this._talkButton.title = insecure ? "HTTPS is required for microphone access" : "";
+    this._talkButton.setAttribute("aria-busy", String(loading));
+  }
+
   async _cleanup(clearStatus = true) {
+    this._streamReady = false;
     await this._stopMicrophone();
     this._remoteStream?.getTracks().forEach((track) => track.stop());
     this._remoteStream = undefined;
@@ -446,8 +476,12 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
         button:hover { filter: brightness(1.08); }
         button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
         .talk { min-width: 132px; background: var(--primary-color); color: var(--text-primary-color, white); }
+        .talk.loading::before { content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 8px;
+          border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -2px;
+          animation: spin .8s linear infinite; }
         .talk.active { background: var(--error-color, #db4437); transform: scale(.97); }
         .talk:disabled { opacity: .55; cursor: wait; }
+        @keyframes spin { to { transform: rotate(360deg); } }
       </style>
       <ha-card>
         ${this._config.hide_title ? "" : '<div class="header"></div>'}
@@ -465,10 +499,6 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
     this._status = this.shadowRoot.querySelector(".status");
     this._talkButton = this.shadowRoot.querySelector(".talk");
     this._soundButton = this.shadowRoot.querySelector(".sound");
-    if (!window.isSecureContext) {
-      this._talkButton.disabled = true;
-      this._talkButton.title = "HTTPS is required for microphone access";
-    }
     this._talkButton.addEventListener("pointerdown", this._beginTalk);
     this._talkButton.addEventListener("pointerup", this._endTalk);
     this._talkButton.addEventListener("pointercancel", this._endTalk);
@@ -478,6 +508,7 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
     this._soundButton.addEventListener("click", this._toggleSound);
     this._updateTitle();
     this._updateSoundButton();
+    this._updateTalkButton();
   }
 }
 

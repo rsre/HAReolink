@@ -2,6 +2,15 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.6.0] - 2026-09-09
+
+### Changed
+
+- The PTT button now shows a loading spinner while the WebRTC stream connects
+  and while browser microphone capture is being assigned.
+- PTT remains unavailable until the stream is ready and changes to the talking
+  state only after its microphone track has been attached.
+
 ## [0.5.2] - 2026-09-09
 
 ### Changed
@@ -115,6 +124,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.6.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/rsre/VideolinkDoorbell/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/rsre/VideolinkDoorbell/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.4.3...v0.5.0
