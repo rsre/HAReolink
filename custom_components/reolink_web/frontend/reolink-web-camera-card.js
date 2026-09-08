@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.4.0";
+const CARD_VERSION = "0.4.1";
 
 class ReolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -31,13 +31,11 @@ class ReolinkWebCameraCard extends HTMLElement {
         { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
         { name: "title", selector: { text: {} } },
         { name: "hide_title", selector: { boolean: {} } },
-        { name: "start_unmuted", selector: { boolean: {} } },
       ],
       computeLabel: (schema) => ({
         entity: "Camera entity",
         title: "Title",
         hide_title: "Hide card title",
-        start_unmuted: "Load stream unmuted",
       })[schema.name],
     };
   }
@@ -48,13 +46,11 @@ class ReolinkWebCameraCard extends HTMLElement {
     }
     const previous = this._config;
     const changed = previous?.entity !== config.entity;
-    const muteDefaultChanged = previous?.start_unmuted !== config.start_unmuted;
     this._config = {
       hide_title: false,
-      start_unmuted: false,
       ...config,
     };
-    if (!previous || muteDefaultChanged) this._muted = !this._config.start_unmuted;
+    if (!previous || changed) this._muted = true;
     this._render();
     if (changed && this.isConnected) {
       this._restart();
@@ -289,7 +285,9 @@ class ReolinkWebCameraCard extends HTMLElement {
       const track = this._micStream.getAudioTracks()[0];
       await this._audioSender.replaceTrack(track);
       this._talking = true;
-      this._mutedBeforeTalk = this._muted;
+      // Keep inbound audio muted while transmitting to prevent feedback. Once
+      // PTT ends, listening is enabled automatically so the reply is audible.
+      this._mutedBeforeTalk = false;
       this._muted = true;
       if (this._video) this._video.muted = true;
       if (this._soundButton) this._soundButton.disabled = true;

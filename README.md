@@ -43,7 +43,6 @@ type: custom:reolink-web-camera-card
 entity: camera.your_reolink_camera
 title: Front door
 hide_title: false
-start_unmuted: false
 ```
 
 Hold **Hold to talk** while speaking and release it to stop. The card requests
@@ -52,9 +51,9 @@ immediately afterward. Home Assistant must be opened over HTTPS (or localhost)
 because browsers block microphone capture on insecure origins.
 
 Click the video to open Home Assistant's native camera dialog. Set `hide_title` to
-`true` for a titleless card, or `start_unmuted` to `true` to request camera audio
-on load. Browsers may still block unmuted autoplay until the page is interacted
-with; the card falls back to muted playback when that happens.
+`true` for a titleless card. The stream starts muted; using push-to-talk keeps
+inbound sound muted while transmitting to avoid feedback, then enables it on
+release so the reply can be heard.
 
 The integration communicates locally with the camera. Credentials are stored in
 Home Assistant's config entry and are never committed to this repository.

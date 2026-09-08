@@ -2,6 +2,14 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.4.1] - 2026-09-08
+
+### Changed
+
+- Streams now always start muted. Push-to-talk keeps inbound sound muted during
+  transmission, then automatically enables it on release for the response.
+- Removed the `start_unmuted` card setting.
+
 ## [0.4.0] - 2026-09-08
 
 ### Added
@@ -64,6 +72,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.4.1]: https://github.com/rsre/HAReolink/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/rsre/HAReolink/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/rsre/HAReolink/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/rsre/HAReolink/compare/v0.3.0...v0.3.1
