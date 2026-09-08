@@ -191,10 +191,10 @@ class ReolinkClient:
     def rtsp_backchannel_url(
         self, channel: int, stream: str, rtsp_port: int
     ) -> str:
-        """Build the secondary RTSP source used only for its audio backchannel."""
+        """Build the complete secondary RTSP producer with ONVIF backchannel."""
         username = quote(self.username, safe="")
         password = quote(self.password, safe="")
         return (
             f"rtsp://{username}:{password}@{self.host}:{rtsp_port}/"
-            f"h264Preview_{channel + 1:02d}_{stream}#media=audio"
+            f"h264Preview_{channel + 1:02d}_{stream}"
         )
