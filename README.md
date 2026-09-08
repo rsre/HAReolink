@@ -74,7 +74,8 @@ push-to-talk as the camera card.
 Set `debug: true` on either card to display live WebRTC transport and PTT timing
 diagnostics. The panel reports connection time, RTT, inbound jitter and jitter
 buffering, packet counters, codec, microphone permission time, track attachment,
-and the delay until the first outbound microphone packet.
+and the delay until the first outbound microphone packet. Use **Copy diagnostics**
+to copy the complete report.
 
 The integration communicates locally with the camera. Credentials are stored in
 Home Assistant's config entry and are never committed to this repository.

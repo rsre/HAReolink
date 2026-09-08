@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.7.0";
+const CARD_VERSION = "0.7.1";
 
 class VideolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -141,7 +141,9 @@ class VideolinkWebCameraCard extends HTMLElement {
         .diagnostics { margin: 0 12px 12px; padding: 8px 10px; border-radius: 8px;
           background: var(--secondary-background-color); color: var(--secondary-text-color); font-size: 12px; }
         .diagnostics summary { cursor: pointer; color: var(--primary-text-color); font-weight: 500; }
-        .diagnostics pre { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.45 monospace; }
+        .diagnostics pre { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.45 monospace;
+          user-select: text; -webkit-user-select: text; cursor: text; }
+        .copy-diagnostics { min-width: 0; height: 32px; padding: 0 12px; font-size: 12px; }
       </style>
       <ha-card>
         ${this._config.hide_title ? "" : '<div class="header"></div>'}
@@ -155,7 +157,7 @@ class VideolinkWebCameraCard extends HTMLElement {
           <button class="sound" type="button" title="Enable camera audio" aria-label="Enable camera audio">🔇</button>
           <button class="talk" type="button" aria-label="Hold to talk">Hold to talk</button>
         </div>
-        ${this._config.debug ? '<details class="diagnostics" open><summary>Stream diagnostics</summary><pre></pre></details>' : ""}
+        ${this._config.debug ? '<details class="diagnostics" open><summary>Stream diagnostics</summary><pre></pre><button class="copy-diagnostics" type="button">Copy diagnostics</button></details>' : ""}
       </ha-card>`;
 
     this._video = this.shadowRoot.querySelector("video");
@@ -164,6 +166,7 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._talkButton = this.shadowRoot.querySelector(".talk");
     this._soundButton = this.shadowRoot.querySelector(".sound");
     this._diagnosticsOutput = this.shadowRoot.querySelector(".diagnostics pre");
+    this._copyDiagnosticsButton = this.shadowRoot.querySelector(".copy-diagnostics");
 
     this._talkButton.addEventListener("pointerdown", this._beginTalk);
     this._talkButton.addEventListener("pointerup", this._endTalk);
@@ -172,6 +175,7 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._talkButton.addEventListener("keydown", this._talkKeyDown);
     this._talkButton.addEventListener("keyup", this._talkKeyUp);
     this._soundButton.addEventListener("click", this._toggleSound);
+    this._copyDiagnosticsButton?.addEventListener("click", this._copyDiagnostics);
     const stage = this.shadowRoot.querySelector(".stage");
     if (!this._config.disable_popup) {
       stage.addEventListener("click", this._openMoreInfo);
@@ -519,6 +523,25 @@ class VideolinkWebCameraCard extends HTMLElement {
     ].filter(Boolean).join("\n");
   }
 
+  _copyDiagnostics = async () => {
+    const text = this._diagnosticsOutput?.textContent;
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      this._copyDiagnosticsButton.textContent = "Copied";
+    } catch {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(this._diagnosticsOutput);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      this._copyDiagnosticsButton.textContent = "Text selected";
+    }
+    window.setTimeout(() => {
+      if (this._copyDiagnosticsButton) this._copyDiagnosticsButton.textContent = "Copy diagnostics";
+    }, 1500);
+  };
+
   async _cleanup(clearStatus = true) {
     this._streamReady = false;
     this._stopDiagnostics();
@@ -599,7 +622,9 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
         .diagnostics { margin: 0 12px 12px; padding: 8px 10px; border-radius: 8px;
           background: var(--secondary-background-color); color: var(--secondary-text-color); font-size: 12px; }
         .diagnostics summary { cursor: pointer; color: var(--primary-text-color); font-weight: 500; }
-        .diagnostics pre { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.45 monospace; }
+        .diagnostics pre { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.45 monospace;
+          user-select: text; -webkit-user-select: text; cursor: text; }
+        .copy-diagnostics { min-width: 0; height: 32px; padding: 0 12px; font-size: 12px; }
       </style>
       <ha-card>
         ${this._config.hide_title ? "" : '<div class="header"></div>'}
@@ -610,7 +635,7 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
           <button class="sound" type="button" title="Enable camera audio" aria-label="Enable camera audio">🔇</button>
           <button class="talk" type="button" aria-label="Hold to talk">Hold to talk</button>
         </div>
-        ${this._config.debug ? '<details class="diagnostics" open><summary>Stream diagnostics</summary><pre></pre></details>' : ""}
+        ${this._config.debug ? '<details class="diagnostics" open><summary>Stream diagnostics</summary><pre></pre><button class="copy-diagnostics" type="button">Copy diagnostics</button></details>' : ""}
       </ha-card>`;
 
     this._video = this.shadowRoot.querySelector("audio");
@@ -619,6 +644,7 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
     this._talkButton = this.shadowRoot.querySelector(".talk");
     this._soundButton = this.shadowRoot.querySelector(".sound");
     this._diagnosticsOutput = this.shadowRoot.querySelector(".diagnostics pre");
+    this._copyDiagnosticsButton = this.shadowRoot.querySelector(".copy-diagnostics");
     this._talkButton.addEventListener("pointerdown", this._beginTalk);
     this._talkButton.addEventListener("pointerup", this._endTalk);
     this._talkButton.addEventListener("pointercancel", this._endTalk);
@@ -626,6 +652,7 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
     this._talkButton.addEventListener("keydown", this._talkKeyDown);
     this._talkButton.addEventListener("keyup", this._talkKeyUp);
     this._soundButton.addEventListener("click", this._toggleSound);
+    this._copyDiagnosticsButton?.addEventListener("click", this._copyDiagnostics);
     this._updateTitle();
     this._updateSoundButton();
     this._updateTalkButton();

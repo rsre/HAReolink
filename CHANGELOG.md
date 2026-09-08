@@ -2,6 +2,13 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.7.1] - 2026-09-09
+
+### Fixed
+
+- Made diagnostic report text selectable and added a copy button with a text
+  selection fallback when clipboard access is unavailable.
+
 ## [0.7.0] - 2026-09-09
 
 ### Added
@@ -132,6 +139,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.7.1]: https://github.com/rsre/VideolinkDoorbell/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/rsre/VideolinkDoorbell/compare/v0.5.1...v0.5.2
