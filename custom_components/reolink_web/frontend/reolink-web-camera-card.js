@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.3.1";
+const CARD_VERSION = "0.3.2";
 
 class ReolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -17,6 +17,7 @@ class ReolinkWebCameraCard extends HTMLElement {
     this._talking = false;
     this._talkRequested = false;
     this._muted = true;
+    this._mutedBeforeTalk = undefined;
   }
 
   static getStubConfig(hass, entities) {
@@ -249,10 +250,12 @@ class ReolinkWebCameraCard extends HTMLElement {
       const track = this._micStream.getAudioTracks()[0];
       await this._audioSender.replaceTrack(track);
       this._talking = true;
+      this._mutedBeforeTalk = this._muted;
+      this._muted = true;
+      if (this._video) this._video.muted = true;
+      if (this._soundButton) this._soundButton.disabled = true;
       this._talkButton.classList.add("active");
       this._talkButton.textContent = "Talking…";
-      if (this._video) this._video.muted = false;
-      this._muted = false;
       this._updateSoundButton();
       if (event.pointerId != null) this._talkButton.setPointerCapture?.(event.pointerId);
     } catch (error) {
@@ -278,11 +281,19 @@ class ReolinkWebCameraCard extends HTMLElement {
   };
 
   async _stopMicrophone() {
+    const restoreMuted = this._talking ? this._mutedBeforeTalk : undefined;
     this._talkRequested = false;
     if (this._audioSender) await this._audioSender.replaceTrack(null).catch(() => undefined);
     this._micStream?.getTracks().forEach((track) => track.stop());
     this._micStream = undefined;
     this._talking = false;
+    this._mutedBeforeTalk = undefined;
+    if (restoreMuted !== undefined) {
+      this._muted = restoreMuted;
+      if (this._video) this._video.muted = restoreMuted;
+    }
+    if (this._soundButton) this._soundButton.disabled = false;
+    this._updateSoundButton();
     if (this._talkButton) {
       this._talkButton.classList.remove("active");
       this._talkButton.textContent = "Hold to talk";
