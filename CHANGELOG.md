@@ -2,6 +2,13 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.5.2] - 2026-09-09
+
+### Changed
+
+- Reverted persistent Lovelace resource creation. The cards are again exposed
+  through Home Assistant's extra-module registration when the integration loads.
+
 ## [0.5.1] - 2026-09-08
 
 ### Fixed
@@ -108,6 +115,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.5.2]: https://github.com/rsre/VideolinkDoorbell/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/rsre/VideolinkDoorbell/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/rsre/VideolinkDoorbell/compare/v0.4.2...v0.4.3

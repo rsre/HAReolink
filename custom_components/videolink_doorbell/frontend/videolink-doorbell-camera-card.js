@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.1";
+const CARD_VERSION = "0.5.2";
 
 class VideolinkWebCameraCard extends HTMLElement {
   constructor() {
