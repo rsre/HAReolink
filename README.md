@@ -43,6 +43,7 @@ type: custom:reolink-web-camera-card
 entity: camera.your_reolink_camera
 title: Front door
 hide_title: false
+disable_popup: false
 ```
 
 Hold **Hold to talk** while speaking and release it to stop. The card requests
@@ -54,8 +55,9 @@ When the browser reports an insecure context, the card displays an HTTPS warning
 and disables push-to-talk. Browser-recognized secure localhost addresses continue
 to work without a certificate.
 
-Click the video to open Home Assistant's native camera dialog. Set `hide_title` to
-`true` for a titleless card. The stream starts muted; using push-to-talk keeps
+Click the video to open Home Assistant's native camera dialog, or set
+`disable_popup` to `true` to disable that behavior. Set `hide_title` to `true` for
+a titleless card. The stream starts muted; using push-to-talk keeps
 inbound sound muted while transmitting to avoid feedback, then enables it on
 release so the reply can be heard.
 

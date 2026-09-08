@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.4.2";
+const CARD_VERSION = "0.4.3";
 
 class ReolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -31,11 +31,13 @@ class ReolinkWebCameraCard extends HTMLElement {
         { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
         { name: "title", selector: { text: {} } },
         { name: "hide_title", selector: { boolean: {} } },
+        { name: "disable_popup", selector: { boolean: {} } },
       ],
       computeLabel: (schema) => ({
         entity: "Camera entity",
         title: "Title",
         hide_title: "Hide card title",
+        disable_popup: "Disable video popup",
       })[schema.name],
     };
   }
@@ -48,6 +50,7 @@ class ReolinkWebCameraCard extends HTMLElement {
     const changed = previous?.entity !== config.entity;
     this._config = {
       hide_title: false,
+      disable_popup: false,
       ...config,
     };
     if (!previous || changed) this._muted = true;
@@ -100,7 +103,8 @@ class ReolinkWebCameraCard extends HTMLElement {
         :host { display: block; }
         ha-card { overflow: hidden; background: var(--ha-card-background, var(--card-background-color)); }
         .header { padding: 12px 16px; font-size: 16px; font-weight: 500; }
-        .stage { position: relative; background: #000; aspect-ratio: 16 / 9; cursor: pointer; }
+        .stage { position: relative; background: #000; aspect-ratio: 16 / 9; }
+        .stage.popup-enabled { cursor: pointer; }
         video { width: 100%; height: 100%; display: block; object-fit: contain; background: #000; }
         .status { position: absolute; inset: auto 10px 10px; padding: 6px 9px; border-radius: 6px;
           color: white; background: rgba(0,0,0,.68); font-size: 12px; pointer-events: none; }
@@ -120,7 +124,8 @@ class ReolinkWebCameraCard extends HTMLElement {
       </style>
       <ha-card>
         ${this._config.hide_title ? "" : '<div class="header"></div>'}
-        <div class="stage" role="button" tabindex="0" aria-label="Open camera stream">
+        <div class="stage ${this._config.disable_popup ? "" : "popup-enabled"}"
+          ${this._config.disable_popup ? "" : 'role="button" tabindex="0" aria-label="Open camera stream"'}>
           <video autoplay playsinline muted></video>
           <div class="status">Connecting…</div>
         </div>
@@ -149,10 +154,12 @@ class ReolinkWebCameraCard extends HTMLElement {
     this._talkButton.addEventListener("keyup", this._talkKeyUp);
     this._soundButton.addEventListener("click", this._toggleSound);
     const stage = this.shadowRoot.querySelector(".stage");
-    stage.addEventListener("click", this._openMoreInfo);
-    stage.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") this._openMoreInfo(event);
-    });
+    if (!this._config.disable_popup) {
+      stage.addEventListener("click", this._openMoreInfo);
+      stage.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") this._openMoreInfo(event);
+      });
+    }
     this._updateTitle();
     this._updateSoundButton();
   }
@@ -170,6 +177,7 @@ class ReolinkWebCameraCard extends HTMLElement {
 
   _openMoreInfo = (event) => {
     event.preventDefault();
+    if (this._config.disable_popup) return;
     this.dispatchEvent(new CustomEvent("hass-more-info", {
       bubbles: true,
       composed: true,

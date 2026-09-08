@@ -2,6 +2,13 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.4.3] - 2026-09-08
+
+### Added
+
+- Added a `disable_popup` card setting to disable opening Home Assistant's native
+  camera dialog when the video is clicked.
+
 ## [0.4.2] - 2026-09-08
 
 ### Added
@@ -79,6 +86,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.4.3]: https://github.com/rsre/HAReolink/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/rsre/HAReolink/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/rsre/HAReolink/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/rsre/HAReolink/compare/v0.3.2...v0.4.0
