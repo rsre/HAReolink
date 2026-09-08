@@ -2,6 +2,14 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.5.1] - 2026-09-08
+
+### Fixed
+
+- Persist the bundled cards as a Lovelace module resource so both cards appear
+  in the picker after installing or reinstalling the integration.
+- Retain automatic extra-module registration as a fallback for YAML dashboards.
+
 ## [0.5.0] - 2026-09-08
 
 ### Added
@@ -100,6 +108,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.5.1]: https://github.com/rsre/VideolinkDoorbell/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/rsre/VideolinkDoorbell/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/rsre/VideolinkDoorbell/compare/v0.4.1...v0.4.2
