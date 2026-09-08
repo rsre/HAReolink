@@ -1,4 +1,4 @@
-"""Config flow for Reolink Web Console."""
+"""Config flow for Videolink Doorbell."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
 
-from .api import ReolinkAuthError, ReolinkClient, ReolinkConnectionError, ReolinkError
+from .api import VideolinkAuthError, VideolinkClient, VideolinkConnectionError, VideolinkError
 from .const import (
     CONF_CHANNEL,
     CONF_RTSP_PORT,
@@ -27,7 +27,7 @@ from .const import (
 )
 
 
-class ReolinkWebConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class VideolinkWebConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle setup through the Home Assistant UI."""
 
     VERSION = 1
@@ -36,7 +36,7 @@ class ReolinkWebConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Collect and validate camera settings."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            client = ReolinkClient(
+            client = VideolinkClient(
                 async_get_clientsession(self.hass),
                 user_input[CONF_HOST],
                 user_input[CONF_USERNAME],
@@ -46,11 +46,11 @@ class ReolinkWebConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
             try:
                 info = await client.device_info()
-            except ReolinkAuthError:
+            except VideolinkAuthError:
                 errors["base"] = "invalid_auth"
-            except ReolinkConnectionError:
+            except VideolinkConnectionError:
                 errors["base"] = "cannot_connect"
-            except ReolinkError:
+            except VideolinkError:
                 errors["base"] = "unknown"
             else:
                 unique_id = info.serial or f"{client.host}:{client.port}"

@@ -1,4 +1,4 @@
-"""Camera platform for Reolink Web Console."""
+"""Camera platform for Videolink Doorbell."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo as HADeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api import DeviceInfo, ReolinkClient
+from .api import DeviceInfo, VideolinkClient
 from .const import (
     CONF_CHANNEL,
     CONF_RTSP_PORT,
@@ -26,23 +26,23 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry[ReolinkClient],
+    entry: ConfigEntry[VideolinkClient],
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Create the camera entity."""
     client = entry.runtime_data
     info = await client.device_info()
-    async_add_entities([ReolinkWebCamera(entry, client, info)])
+    async_add_entities([VideolinkWebCamera(entry, client, info)])
 
 
-class ReolinkWebCamera(Camera):
-    """A Reolink camera using the web console API and FLV preview stream."""
+class VideolinkWebCamera(Camera):
+    """A Videolink camera using the web console API and FLV preview stream."""
 
     _attr_has_entity_name = True
     _attr_name = None
     _attr_supported_features = CameraEntityFeature.STREAM
 
-    def __init__(self, entry: ConfigEntry[ReolinkClient], client: ReolinkClient, info: DeviceInfo) -> None:
+    def __init__(self, entry: ConfigEntry[VideolinkClient], client: VideolinkClient, info: DeviceInfo) -> None:
         super().__init__()
         self._entry = entry
         self._client = client
@@ -54,7 +54,7 @@ class ReolinkWebCamera(Camera):
         self._attr_device_info = HADeviceInfo(
             identifiers={(DOMAIN, identifier)},
             name=info.name,
-            manufacturer="Reolink",
+            manufacturer="Videolink",
             model=info.model,
             sw_version=info.firmware,
             configuration_url=client.base_url,

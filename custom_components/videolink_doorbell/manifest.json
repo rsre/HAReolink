@@ -1,13 +1,13 @@
 {
-  "domain": "reolink_web",
-  "name": "Reolink Web Console",
+  "domain": "videolink_doorbell",
+  "name": "Videolink Doorbell",
   "codeowners": ["@rsre"],
   "config_flow": true,
   "dependencies": ["frontend", "go2rtc", "http", "stream"],
-  "documentation": "https://github.com/rsre/HAReolink",
+  "documentation": "https://github.com/rsre/VideolinkDoorbell",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/rsre/HAReolink/issues",
+  "issue_tracker": "https://github.com/rsre/VideolinkDoorbell/issues",
   "requirements": [],
   "version": "0.5.0"
 }

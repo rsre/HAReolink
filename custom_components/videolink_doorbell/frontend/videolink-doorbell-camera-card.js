@@ -1,6 +1,6 @@
 const CARD_VERSION = "0.5.0";
 
-class ReolinkWebCameraCard extends HTMLElement {
+class VideolinkWebCameraCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -398,7 +398,7 @@ class ReolinkWebCameraCard extends HTMLElement {
   }
 }
 
-class ReolinkWebAudioCard extends ReolinkWebCameraCard {
+class VideolinkWebAudioCard extends VideolinkWebCameraCard {
   static getConfigForm() {
     return {
       schema: [
@@ -481,27 +481,27 @@ class ReolinkWebAudioCard extends ReolinkWebCameraCard {
   }
 }
 
-if (!customElements.get("reolink-web-camera-card")) {
-  customElements.define("reolink-web-camera-card", ReolinkWebCameraCard);
+if (!customElements.get("videolink-doorbell-camera-card")) {
+  customElements.define("videolink-doorbell-camera-card", VideolinkWebCameraCard);
   window.customCards = window.customCards || [];
   window.customCards.push({
-    type: "reolink-web-camera-card",
-    name: "Reolink Web Camera",
-    description: "Reolink FLV camera card with WebRTC push-to-talk",
+    type: "videolink-doorbell-camera-card",
+    name: "Videolink Doorbell Camera",
+    description: "Videolink FLV camera card with WebRTC push-to-talk",
     preview: true,
-    documentationURL: "https://github.com/rsre/HAReolink",
+    documentationURL: "https://github.com/rsre/VideolinkDoorbell",
   });
-  console.info(`%c REOLINK-WEB-CAMERA-CARD %c ${CARD_VERSION} `, "color:white;background:#067a9c", "color:#067a9c");
+  console.info(`%c VIDEOLINK-DOORBELL-CARD %c ${CARD_VERSION} `, "color:white;background:#067a9c", "color:#067a9c");
 }
 
-if (!customElements.get("reolink-web-audio-card")) {
-  customElements.define("reolink-web-audio-card", ReolinkWebAudioCard);
+if (!customElements.get("videolink-doorbell-audio-card")) {
+  customElements.define("videolink-doorbell-audio-card", VideolinkWebAudioCard);
   window.customCards = window.customCards || [];
   window.customCards.push({
-    type: "reolink-web-audio-card",
-    name: "Reolink Web Audio",
-    description: "Audio-only Reolink card with WebRTC push-to-talk",
+    type: "videolink-doorbell-audio-card",
+    name: "Videolink Doorbell Audio",
+    description: "Audio-only Videolink card with WebRTC push-to-talk",
     preview: true,
-    documentationURL: "https://github.com/rsre/HAReolink",
+    documentationURL: "https://github.com/rsre/VideolinkDoorbell",
   });
 }

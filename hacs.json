@@ -1,5 +1,5 @@
 {
-  "name": "Reolink Web Console",
+  "name": "Videolink Doorbell",
   "content_in_root": false,
   "homeassistant": "2026.9.1",
   "render_readme": true

@@ -8,7 +8,7 @@
     },
     "step": {
       "user": {
-        "title": "Connect to the Reolink web console",
+        "title": "Connect Videolink Doorbell",
         "description": "Enter the same credentials used at the camera's web console.",
         "data": {
           "host": "Host",

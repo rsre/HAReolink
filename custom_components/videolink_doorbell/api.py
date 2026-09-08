@@ -1,4 +1,4 @@
-"""Small async client for the API used by the Reolink web console."""
+"""Small async client for the API used by the Videolink web console."""
 
 from __future__ import annotations
 
@@ -12,15 +12,15 @@ from urllib.parse import quote, urlencode
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
 
-class ReolinkError(Exception):
-    """Base Reolink client error."""
+class VideolinkError(Exception):
+    """Base Videolink client error."""
 
 
-class ReolinkAuthError(ReolinkError):
+class VideolinkAuthError(VideolinkError):
     """Raised when camera authentication fails."""
 
 
-class ReolinkConnectionError(ReolinkError):
+class VideolinkConnectionError(VideolinkError):
     """Raised when the camera cannot be reached."""
 
 
@@ -34,7 +34,7 @@ class DeviceInfo:
     firmware: str
 
 
-class ReolinkClient:
+class VideolinkClient:
     """Client matching the camera web console's token-based CGI API."""
 
     _TIMEOUT = ClientTimeout(total=15)
@@ -86,9 +86,9 @@ class ReolinkClient:
                 response.raise_for_status()
                 payload = await response.json(content_type=None)
         except (ClientError, TimeoutError, ValueError) as err:
-            raise ReolinkConnectionError(str(err)) from err
+            raise VideolinkConnectionError(str(err)) from err
         if not isinstance(payload, list) or not payload:
-            raise ReolinkError("Camera returned an invalid API response")
+            raise VideolinkError("Camera returned an invalid API response")
         return payload
 
     async def login(self) -> None:
@@ -102,11 +102,11 @@ class ReolinkClient:
         )
         result = payload[0]
         if result.get("code") != 0:
-            raise ReolinkAuthError(result.get("error", {}).get("detail", "Login failed"))
+            raise VideolinkAuthError(result.get("error", {}).get("detail", "Login failed"))
         token_data = result.get("value", {}).get("Token", {})
         token = token_data.get("name")
         if not token:
-            raise ReolinkAuthError("Camera did not return a login token")
+            raise VideolinkAuthError("Camera did not return a login token")
         self._token = token
         lease = max(60, int(token_data.get("leaseTime", 3600)))
         self._token_expires = datetime.now(timezone.utc) + timedelta(seconds=lease - 30)
@@ -132,15 +132,15 @@ class ReolinkClient:
             if attempt == 0 and error.get("rspCode") == -6:
                 self._token = None
                 continue
-            raise ReolinkError(error.get("detail", f"{cmd} failed"))
-        raise ReolinkAuthError("Session expired")
+            raise VideolinkError(error.get("detail", f"{cmd} failed"))
+        raise VideolinkAuthError("Session expired")
 
     async def device_info(self) -> DeviceInfo:
         """Read camera identity."""
         value = await self.command("GetDevInfo")
         info = value.get("DevInfo", value)
         return DeviceInfo(
-            name=info.get("name") or info.get("model") or "Reolink Camera",
+            name=info.get("name") or info.get("model") or "Videolink Camera",
             model=info.get("model", "Unknown"),
             serial=info.get("serial", ""),
             firmware=info.get("firmVer", ""),
@@ -165,10 +165,10 @@ class ReolinkClient:
                 response.raise_for_status()
                 data = await response.read()
         except (ClientError, TimeoutError) as err:
-            raise ReolinkConnectionError(str(err)) from err
+            raise VideolinkConnectionError(str(err)) from err
         if not data.startswith(b"\xff\xd8"):
             self._token = None
-            raise ReolinkAuthError("Camera did not return a JPEG snapshot")
+            raise VideolinkAuthError("Camera did not return a JPEG snapshot")
         return data
 
     async def flv_url(self, channel: int, stream: str) -> str:

@@ -1,6 +1,6 @@
-# Reolink Web Console for Home Assistant
+# Videolink Doorbell for Home Assistant
 
-A local custom integration that uses the same token-based CGI API as the Reolink
+A local custom integration that uses the same token-based CGI API as the Videolink
 camera web console for authentication, snapshots, and the native authenticated
 FLV live stream used by the browser player. A secondary RTSP producer supplies
 the go2rtc audio backchannel for supported cameras.
@@ -9,18 +9,18 @@ the go2rtc audio backchannel for supported cameras.
 
 1. In HACS, open **Integrations**, select the three-dot menu, then **Custom
    repositories**.
-2. Add `https://github.com/rsre/HAReolink` with the **Integration** category.
-3. Install **Reolink Web Console** and restart Home Assistant.
+2. Add `https://github.com/rsre/VideolinkDoorbell` with the **Integration** category.
+3. Install **Videolink Doorbell** and restart Home Assistant.
 4. Go to **Settings → Devices & services → Add integration** and search for
-   **Reolink Web Console**.
+   **Videolink Doorbell**.
 
 ## Manual install
 
-1. Copy `custom_components/reolink_web` into the matching directory in your Home
+1. Copy `custom_components/videolink_doorbell` into the matching directory in your Home
    Assistant configuration folder.
 2. Restart Home Assistant.
 3. Go to **Settings → Devices & services → Add integration** and search for
-   **Reolink Web Console**.
+   **Videolink Doorbell**.
 4. Enter the camera host and the credentials used by its web console.
 
 For cameras with their factory/self-signed certificate, leave **Verify HTTPS
@@ -35,12 +35,12 @@ and grant the browser microphone permission. Two-way audio depends on the camera
 firmware exposing a compatible RTSP/ONVIF backchannel; unsupported models continue
 to provide video and camera-to-browser audio normally.
 
-The integration bundles and automatically registers the **Reolink Web Camera**
+The integration bundles and automatically registers the **Videolink Doorbell Camera**
 dashboard card. Add it through the dashboard card picker, or use YAML:
 
 ```yaml
-type: custom:reolink-web-camera-card
-entity: camera.your_reolink_camera
+type: custom:videolink-doorbell-camera-card
+entity: camera.your_videolink_camera
 title: Front door
 hide_title: false
 disable_popup: false
@@ -61,12 +61,12 @@ a titleless card. The stream starts muted; using push-to-talk keeps
 inbound sound muted while transmitting to avoid feedback, then enables it on
 release so the reply can be heard.
 
-For an audio-only intercom without a video stream, use the bundled **Reolink Web
-Audio** card from the card picker, or add it in YAML:
+For an audio-only intercom without a video stream, use the bundled **Videolink
+Doorbell Audio** card from the card picker, or add it in YAML:
 
 ```yaml
-type: custom:reolink-web-audio-card
-entity: camera.your_reolink_camera
+type: custom:videolink-doorbell-audio-card
+entity: camera.your_videolink_camera
 title: Front door intercom
 hide_title: false
 ```
@@ -87,5 +87,5 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 ## Development validation
 
 ```bash
-python -m compileall custom_components/reolink_web
+python -m compileall custom_components/videolink_doorbell
 ```

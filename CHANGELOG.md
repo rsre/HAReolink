@@ -6,8 +6,15 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Added
 
-- Added the bundled `custom:reolink-web-audio-card` for camera audio and
+- Added the bundled `custom:videolink-doorbell-audio-card` for camera audio and
   push-to-talk without loading or rendering a video stream.
+
+### Changed
+
+- Renamed the integration, domain, component directory, frontend resource, card
+  elements, documentation, and repository to **Videolink Doorbell**. Existing
+  installations must remove the old integration, install this release, re-add
+  their camera, and update dashboard card types.
 
 ## [0.4.3] - 2026-09-08
 
@@ -54,7 +61,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Fixed
 
-- Register the complete Reolink RTSP producer so go2rtc can discover and negotiate
+- Register the complete Videolink RTSP producer so go2rtc can discover and negotiate
   its ONVIF `sendonly` PCMU backchannel track. The previous audio-only media filter
   could omit the camera-speaker backchannel.
 
@@ -62,7 +69,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Added
 
-- Bundled Reolink Web Camera Lovelace card with native Home Assistant WebRTC
+- Bundled Videolink Doorbell Camera Lovelace card with native Home Assistant WebRTC
   signaling, hold-to-talk microphone control, speaker mute, and fullscreen.
 - Automatic frontend module registration; no separate card repository or dashboard
   resource installation is required.
@@ -87,20 +94,20 @@ All notable changes are documented here. This project follows Semantic Versionin
 ### Added
 
 - Home Assistant UI configuration flow.
-- Reolink web-console CGI authentication and automatic token renewal.
+- Videolink web-console CGI authentication and automatic token renewal.
 - Authenticated JPEG camera snapshots.
 - Native main and sub RTSP live streams with audio support.
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
-[0.5.0]: https://github.com/rsre/HAReolink/compare/v0.4.3...v0.5.0
-[0.4.3]: https://github.com/rsre/HAReolink/compare/v0.4.2...v0.4.3
-[0.4.2]: https://github.com/rsre/HAReolink/compare/v0.4.1...v0.4.2
-[0.4.1]: https://github.com/rsre/HAReolink/compare/v0.4.0...v0.4.1
-[0.4.0]: https://github.com/rsre/HAReolink/compare/v0.3.2...v0.4.0
-[0.3.2]: https://github.com/rsre/HAReolink/compare/v0.3.1...v0.3.2
-[0.3.1]: https://github.com/rsre/HAReolink/compare/v0.3.0...v0.3.1
-[0.3.0]: https://github.com/rsre/HAReolink/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/rsre/HAReolink/compare/v0.1.1...v0.2.0
-[0.1.1]: https://github.com/rsre/HAReolink/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/rsre/HAReolink/releases/tag/v0.1.0
+[0.5.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.4.3...v0.5.0
+[0.4.3]: https://github.com/rsre/VideolinkDoorbell/compare/v0.4.2...v0.4.3
+[0.4.2]: https://github.com/rsre/VideolinkDoorbell/compare/v0.4.1...v0.4.2
+[0.4.1]: https://github.com/rsre/VideolinkDoorbell/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.3.2...v0.4.0
+[0.3.2]: https://github.com/rsre/VideolinkDoorbell/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/rsre/VideolinkDoorbell/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/rsre/VideolinkDoorbell/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/rsre/VideolinkDoorbell/releases/tag/v0.1.0

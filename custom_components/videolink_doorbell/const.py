@@ -1,8 +1,8 @@
-"""Constants for the Reolink Web Console integration."""
+"""Constants for the Videolink Doorbell integration."""
 
 from homeassistant.const import Platform
 
-DOMAIN = "reolink_web"
+DOMAIN = "videolink_doorbell"
 
 CONF_CHANNEL = "channel"
 CONF_RTSP_PORT = "rtsp_port"
