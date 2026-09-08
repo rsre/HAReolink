@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.6.0";
+const CARD_VERSION = "0.7.0";
 
 class VideolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -20,6 +20,10 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._talkRequested = false;
     this._muted = true;
     this._mutedBeforeTalk = undefined;
+    this._diagnosticTimer = undefined;
+    this._collectingStats = false;
+    this._diagnostics = {};
+    this._outboundPacketsAtAttach = undefined;
   }
 
   static getStubConfig(hass, entities) {
@@ -34,12 +38,14 @@ class VideolinkWebCameraCard extends HTMLElement {
         { name: "title", selector: { text: {} } },
         { name: "hide_title", selector: { boolean: {} } },
         { name: "disable_popup", selector: { boolean: {} } },
+        { name: "debug", selector: { boolean: {} } },
       ],
       computeLabel: (schema) => ({
         entity: "Camera entity",
         title: "Title",
         hide_title: "Hide card title",
         disable_popup: "Disable video popup",
+        debug: "Show stream diagnostics",
       })[schema.name],
     };
   }
@@ -53,6 +59,7 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._config = {
       hide_title: false,
       disable_popup: false,
+      debug: false,
       ...config,
     };
     if (!previous || changed) this._muted = true;
@@ -131,6 +138,10 @@ class VideolinkWebCameraCard extends HTMLElement {
         .talk.active { background: var(--error-color, #db4437); transform: scale(.97); }
         .talk:disabled { opacity: .55; cursor: wait; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .diagnostics { margin: 0 12px 12px; padding: 8px 10px; border-radius: 8px;
+          background: var(--secondary-background-color); color: var(--secondary-text-color); font-size: 12px; }
+        .diagnostics summary { cursor: pointer; color: var(--primary-text-color); font-weight: 500; }
+        .diagnostics pre { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.45 monospace; }
       </style>
       <ha-card>
         ${this._config.hide_title ? "" : '<div class="header"></div>'}
@@ -144,6 +155,7 @@ class VideolinkWebCameraCard extends HTMLElement {
           <button class="sound" type="button" title="Enable camera audio" aria-label="Enable camera audio">🔇</button>
           <button class="talk" type="button" aria-label="Hold to talk">Hold to talk</button>
         </div>
+        ${this._config.debug ? '<details class="diagnostics" open><summary>Stream diagnostics</summary><pre></pre></details>' : ""}
       </ha-card>`;
 
     this._video = this.shadowRoot.querySelector("video");
@@ -151,6 +163,7 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._status = this.shadowRoot.querySelector(".status");
     this._talkButton = this.shadowRoot.querySelector(".talk");
     this._soundButton = this.shadowRoot.querySelector(".sound");
+    this._diagnosticsOutput = this.shadowRoot.querySelector(".diagnostics pre");
 
     this._talkButton.addEventListener("pointerdown", this._beginTalk);
     this._talkButton.addEventListener("pointerup", this._endTalk);
@@ -169,6 +182,9 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._updateTitle();
     this._updateSoundButton();
     this._updateTalkButton();
+    this._updateDiagnosticsView();
+    if (this._config.debug && this._peer) this._startDiagnostics();
+    else if (!this._config.debug) this._stopDiagnostics();
   }
 
   _updateTitle() {
@@ -201,7 +217,9 @@ class VideolinkWebCameraCard extends HTMLElement {
     if (this._starting || this._peer || !this._hass || !this._config || document.hidden) return;
     this._starting = true;
     this._streamReady = false;
+    this._diagnostics = { startedAt: performance.now(), phase: "connecting" };
     this._updateTalkButton();
+    this._updateDiagnosticsView();
     this._setStatus("Connecting…");
     try {
       if (!window.RTCPeerConnection) throw new Error("This browser does not support WebRTC");
@@ -211,6 +229,7 @@ class VideolinkWebCameraCard extends HTMLElement {
       });
       const peer = new RTCPeerConnection(clientConfig.configuration);
       this._peer = peer;
+      this._startDiagnostics();
       if (clientConfig.dataChannel) peer.createDataChannel(clientConfig.dataChannel);
 
       this._remoteStream = new MediaStream();
@@ -234,11 +253,14 @@ class VideolinkWebCameraCard extends HTMLElement {
       peer.onconnectionstatechange = () => {
         if (peer.connectionState === "connected") {
           this._streamReady = true;
+          this._diagnostics.phase = "connected";
+          this._diagnostics.connectMs = performance.now() - this._diagnostics.startedAt;
           this._setStatus("");
           this._updateTalkButton();
         }
         if (["failed", "disconnected"].includes(peer.connectionState)) {
           this._streamReady = false;
+          this._diagnostics.phase = peer.connectionState;
           this._setStatus(`WebRTC ${peer.connectionState}`);
           this._updateTalkButton();
         }
@@ -310,6 +332,10 @@ class VideolinkWebCameraCard extends HTMLElement {
     if (this._talking || this._micPending || !this._streamReady || !this._audioSender) return;
     this._talkRequested = true;
     this._micPending = true;
+    this._diagnostics.micRequestedAt = performance.now();
+    this._diagnostics.micPermissionMs = undefined;
+    this._diagnostics.trackAttachMs = undefined;
+    this._diagnostics.firstOutboundPacketMs = undefined;
     if (event.pointerId != null) this._talkButton.setPointerCapture?.(event.pointerId);
     this._updateTalkButton();
     try {
@@ -317,13 +343,17 @@ class VideolinkWebCameraCard extends HTMLElement {
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: false,
       });
+      this._diagnostics.micPermissionMs = performance.now() - this._diagnostics.micRequestedAt;
       if (!this._talkRequested) {
         this._micStream.getTracks().forEach((track) => track.stop());
         this._micStream = undefined;
         return;
       }
       const track = this._micStream.getAudioTracks()[0];
+      this._outboundPacketsAtAttach = await this._getOutboundAudioPackets();
       await this._audioSender.replaceTrack(track);
+      this._diagnostics.trackAttachedAt = performance.now();
+      this._diagnostics.trackAttachMs = this._diagnostics.trackAttachedAt - this._diagnostics.micRequestedAt;
       this._talking = true;
       this._micPending = false;
       // Keep inbound audio muted while transmitting to prevent feedback. Once
@@ -334,8 +364,10 @@ class VideolinkWebCameraCard extends HTMLElement {
       if (this._soundButton) this._soundButton.disabled = true;
       this._updateTalkButton();
       this._updateSoundButton();
+      this._updateDiagnosticsView();
     } catch (error) {
       this._setStatus(`Microphone unavailable: ${error?.message || error}`);
+      this._diagnostics.microphoneError = error?.message || String(error);
       await this._stopMicrophone();
     } finally {
       this._micPending = false;
@@ -408,8 +440,88 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._talkButton.setAttribute("aria-busy", String(loading));
   }
 
+  _startDiagnostics() {
+    this._stopDiagnostics();
+    if (!this._config?.debug) return;
+    this._diagnosticTimer = window.setInterval(() => this._collectDiagnostics(), 250);
+    this._collectDiagnostics();
+  }
+
+  _stopDiagnostics() {
+    if (this._diagnosticTimer !== undefined) window.clearInterval(this._diagnosticTimer);
+    this._diagnosticTimer = undefined;
+  }
+
+  async _getOutboundAudioPackets() {
+    if (!this._audioSender) return 0;
+    const stats = await this._audioSender.getStats();
+    return [...stats.values()]
+      .filter((report) => report.type === "outbound-rtp" && (report.kind || report.mediaType) === "audio")
+      .reduce((total, report) => total + (report.packetsSent || 0), 0);
+  }
+
+  async _collectDiagnostics() {
+    if (!this._config?.debug || !this._peer || this._collectingStats) return;
+    this._collectingStats = true;
+    try {
+      const stats = await this._peer.getStats();
+      const reports = [...stats.values()];
+      const inbound = reports.find((report) => report.type === "inbound-rtp" && (report.kind || report.mediaType) === "audio");
+      const outbound = reports.find((report) => report.type === "outbound-rtp" && (report.kind || report.mediaType) === "audio");
+      const transport = reports.find((report) => report.type === "transport" && report.selectedCandidatePairId);
+      const pair = stats.get(transport?.selectedCandidatePairId)
+        || reports.find((report) => report.type === "candidate-pair" && report.state === "succeeded" && report.nominated);
+      const codec = inbound && stats.get(inbound.codecId);
+      const packetsSent = outbound?.packetsSent || 0;
+      if (this._diagnostics.trackAttachedAt !== undefined && this._diagnostics.firstOutboundPacketMs === undefined
+          && packetsSent > (this._outboundPacketsAtAttach || 0)) {
+        this._diagnostics.firstOutboundPacketMs = performance.now() - this._diagnostics.trackAttachedAt;
+      }
+      this._diagnostics.rttMs = pair?.currentRoundTripTime == null ? undefined : pair.currentRoundTripTime * 1000;
+      this._diagnostics.inboundJitterMs = inbound?.jitter == null ? undefined : inbound.jitter * 1000;
+      this._diagnostics.jitterBufferMs = inbound?.jitterBufferEmittedCount
+        ? inbound.jitterBufferDelay * 1000 / inbound.jitterBufferEmittedCount
+        : undefined;
+      this._diagnostics.inboundPackets = inbound?.packetsReceived;
+      this._diagnostics.inboundLost = inbound?.packetsLost;
+      this._diagnostics.outboundPackets = outbound?.packetsSent;
+      this._diagnostics.outboundBytes = outbound?.bytesSent;
+      this._diagnostics.codec = codec?.mimeType;
+      this._updateDiagnosticsView();
+    } catch (error) {
+      this._diagnostics.statsError = error?.message || String(error);
+      this._updateDiagnosticsView();
+    } finally {
+      this._collectingStats = false;
+    }
+  }
+
+  _updateDiagnosticsView() {
+    if (!this._diagnosticsOutput) return;
+    const ms = (value) => value == null ? "waiting" : `${value.toFixed(1)} ms`;
+    const value = (item) => item == null ? "waiting" : String(item);
+    this._diagnosticsOutput.textContent = [
+      `Phase: ${this._diagnostics.phase || "idle"}`,
+      `WebRTC connect: ${ms(this._diagnostics.connectMs)}`,
+      `WebRTC RTT: ${ms(this._diagnostics.rttMs)}`,
+      `Inbound jitter: ${ms(this._diagnostics.inboundJitterMs)}`,
+      `Inbound jitter buffer: ${ms(this._diagnostics.jitterBufferMs)}`,
+      `Inbound audio: ${value(this._diagnostics.inboundPackets)} packets, ${value(this._diagnostics.inboundLost)} lost`,
+      `Outbound audio: ${value(this._diagnostics.outboundPackets)} packets, ${value(this._diagnostics.outboundBytes)} bytes`,
+      `Inbound codec: ${value(this._diagnostics.codec)}`,
+      `Mic permission: ${ms(this._diagnostics.micPermissionMs)}`,
+      `PTT to track attached: ${ms(this._diagnostics.trackAttachMs)}`,
+      `Track assignment: ${ms(this._diagnostics.trackAttachMs == null || this._diagnostics.micPermissionMs == null
+        ? undefined : this._diagnostics.trackAttachMs - this._diagnostics.micPermissionMs)}`,
+      `Track attached to first packet: ${ms(this._diagnostics.firstOutboundPacketMs)}`,
+      this._diagnostics.microphoneError ? `Microphone error: ${this._diagnostics.microphoneError}` : "",
+      this._diagnostics.statsError ? `Stats error: ${this._diagnostics.statsError}` : "",
+    ].filter(Boolean).join("\n");
+  }
+
   async _cleanup(clearStatus = true) {
     this._streamReady = false;
+    this._stopDiagnostics();
     await this._stopMicrophone();
     this._remoteStream?.getTracks().forEach((track) => track.stop());
     this._remoteStream = undefined;
@@ -435,11 +547,13 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
         { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
         { name: "title", selector: { text: {} } },
         { name: "hide_title", selector: { boolean: {} } },
+        { name: "debug", selector: { boolean: {} } },
       ],
       computeLabel: (schema) => ({
         entity: "Camera entity",
         title: "Title",
         hide_title: "Hide card title",
+        debug: "Show stream diagnostics",
       })[schema.name],
     };
   }
@@ -482,6 +596,10 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
         .talk.active { background: var(--error-color, #db4437); transform: scale(.97); }
         .talk:disabled { opacity: .55; cursor: wait; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .diagnostics { margin: 0 12px 12px; padding: 8px 10px; border-radius: 8px;
+          background: var(--secondary-background-color); color: var(--secondary-text-color); font-size: 12px; }
+        .diagnostics summary { cursor: pointer; color: var(--primary-text-color); font-weight: 500; }
+        .diagnostics pre { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.45 monospace; }
       </style>
       <ha-card>
         ${this._config.hide_title ? "" : '<div class="header"></div>'}
@@ -492,6 +610,7 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
           <button class="sound" type="button" title="Enable camera audio" aria-label="Enable camera audio">🔇</button>
           <button class="talk" type="button" aria-label="Hold to talk">Hold to talk</button>
         </div>
+        ${this._config.debug ? '<details class="diagnostics" open><summary>Stream diagnostics</summary><pre></pre></details>' : ""}
       </ha-card>`;
 
     this._video = this.shadowRoot.querySelector("audio");
@@ -499,6 +618,7 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
     this._status = this.shadowRoot.querySelector(".status");
     this._talkButton = this.shadowRoot.querySelector(".talk");
     this._soundButton = this.shadowRoot.querySelector(".sound");
+    this._diagnosticsOutput = this.shadowRoot.querySelector(".diagnostics pre");
     this._talkButton.addEventListener("pointerdown", this._beginTalk);
     this._talkButton.addEventListener("pointerup", this._endTalk);
     this._talkButton.addEventListener("pointercancel", this._endTalk);
@@ -509,6 +629,9 @@ class VideolinkWebAudioCard extends VideolinkWebCameraCard {
     this._updateTitle();
     this._updateSoundButton();
     this._updateTalkButton();
+    this._updateDiagnosticsView();
+    if (this._config.debug && this._peer) this._startDiagnostics();
+    else if (!this._config.debug) this._stopDiagnostics();
   }
 }
 

@@ -42,6 +42,7 @@ entity: camera.your_videolink_camera
 title: Front door
 hide_title: false
 disable_popup: false
+debug: false
 ```
 
 Hold **Hold to talk** while speaking and release it to stop. The card requests
@@ -63,11 +64,17 @@ type: custom:videolink-doorbell-audio-card
 entity: camera.your_videolink_camera
 title: Front door intercom
 hide_title: false
+debug: false
 ```
 
 The audio card negotiates only camera audio and the push-to-talk backchannel. It
 uses the same speaker mute control, HTTPS check, and automatic listening after
 push-to-talk as the camera card.
+
+Set `debug: true` on either card to display live WebRTC transport and PTT timing
+diagnostics. The panel reports connection time, RTT, inbound jitter and jitter
+buffering, packet counters, codec, microphone permission time, track attachment,
+and the delay until the first outbound microphone packet.
 
 The integration communicates locally with the camera. Credentials are stored in
 Home Assistant's config entry and are never committed to this repository.
