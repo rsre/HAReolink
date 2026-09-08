@@ -1,0 +1,34 @@
+{
+  "config": {
+    "abort": {"already_configured": "This camera is already configured."},
+    "error": {
+      "cannot_connect": "Failed to connect to the camera.",
+      "invalid_auth": "Invalid username or password.",
+      "unknown": "Unexpected error while communicating with the camera."
+    },
+    "step": {
+      "user": {
+        "title": "Connect to the Reolink web console",
+        "description": "Enter the same credentials used at the camera's web console.",
+        "data": {
+          "host": "Host",
+          "port": "HTTPS port",
+          "username": "Username",
+          "password": "Password",
+          "channel": "Channel (zero-based)",
+          "stream": "Video quality",
+          "rtsp_port": "RTSP port",
+          "verify_ssl": "Verify HTTPS certificate"
+        }
+      }
+    }
+  },
+  "selector": {
+    "stream": {
+      "options": {
+        "main": "Clear (main stream)",
+        "sub": "Fluent (sub stream)"
+      }
+    }
+  }
+}
