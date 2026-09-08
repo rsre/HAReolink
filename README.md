@@ -1,9 +1,7 @@
 # Videolink Doorbell for Home Assistant
 
-A local custom integration that uses the same token-based CGI API as the Videolink
-camera web console for authentication, snapshots, and the native authenticated
-FLV live stream used by the browser player. A secondary RTSP producer supplies
-the go2rtc audio backchannel for supported cameras.
+A local custom integration that uses the token-based CGI API and the native authenticated
+FLV live stream. A secondary RTSP producer supplies the go2rtc audio backchannel for supported cameras.
 
 ## Install with HACS
 
@@ -50,10 +48,6 @@ Hold **Hold to talk** while speaking and release it to stop. The card requests
 microphone access only when the control is pressed and releases the microphone
 immediately afterward. Home Assistant must be opened over HTTPS (or localhost)
 because browsers block microphone capture on insecure origins.
-
-When the browser reports an insecure context, the card displays an HTTPS warning
-and disables push-to-talk. Browser-recognized secure localhost addresses continue
-to work without a certificate.
 
 Click the video to open Home Assistant's native camera dialog, or set
 `disable_popup` to `true` to disable that behavior. Set `hide_title` to `true` for
