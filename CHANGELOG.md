@@ -2,6 +2,13 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.5.0] - 2026-09-08
+
+### Added
+
+- Added the bundled `custom:reolink-web-audio-card` for camera audio and
+  push-to-talk without loading or rendering a video stream.
+
 ## [0.4.3] - 2026-09-08
 
 ### Added
@@ -86,6 +93,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.5.0]: https://github.com/rsre/HAReolink/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/rsre/HAReolink/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/rsre/HAReolink/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/rsre/HAReolink/compare/v0.4.0...v0.4.1

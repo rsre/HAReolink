@@ -61,6 +61,20 @@ a titleless card. The stream starts muted; using push-to-talk keeps
 inbound sound muted while transmitting to avoid feedback, then enables it on
 release so the reply can be heard.
 
+For an audio-only intercom without a video stream, use the bundled **Reolink Web
+Audio** card from the card picker, or add it in YAML:
+
+```yaml
+type: custom:reolink-web-audio-card
+entity: camera.your_reolink_camera
+title: Front door intercom
+hide_title: false
+```
+
+The audio card negotiates only camera audio and the push-to-talk backchannel. It
+uses the same speaker mute control, HTTPS check, and automatic listening after
+push-to-talk as the camera card.
+
 The integration communicates locally with the camera. Credentials are stored in
 Home Assistant's config entry and are never committed to this repository.
 

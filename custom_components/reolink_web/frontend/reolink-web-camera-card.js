@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.4.3";
+const CARD_VERSION = "0.5.0";
 
 class ReolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -71,6 +71,10 @@ class ReolinkWebCameraCard extends HTMLElement {
 
   getCardSize() {
     return 5;
+  }
+
+  get _audioOnly() {
+    return false;
   }
 
   getGridOptions() {
@@ -230,8 +234,11 @@ class ReolinkWebCameraCard extends HTMLElement {
       };
 
       this._audioSender = peer.addTransceiver("audio", { direction: "sendrecv" }).sender;
-      peer.addTransceiver("video", { direction: "recvonly" });
-      const offer = await peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+      if (!this._audioOnly) peer.addTransceiver("video", { direction: "recvonly" });
+      const offer = await peer.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: !this._audioOnly,
+      });
       await peer.setLocalDescription(offer);
 
       this._unsubscribe = this._hass.connection.subscribeMessage(
@@ -391,6 +398,89 @@ class ReolinkWebCameraCard extends HTMLElement {
   }
 }
 
+class ReolinkWebAudioCard extends ReolinkWebCameraCard {
+  static getConfigForm() {
+    return {
+      schema: [
+        { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
+        { name: "title", selector: { text: {} } },
+        { name: "hide_title", selector: { boolean: {} } },
+      ],
+      computeLabel: (schema) => ({
+        entity: "Camera entity",
+        title: "Title",
+        hide_title: "Hide card title",
+      })[schema.name],
+    };
+  }
+
+  get _audioOnly() {
+    return true;
+  }
+
+  getCardSize() {
+    return 2;
+  }
+
+  getGridOptions() {
+    return { rows: 2, columns: 12, min_rows: 1, min_columns: 4 };
+  }
+
+  _render() {
+    if (!this.shadowRoot || !this._config) return;
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host { display: block; }
+        ha-card { overflow: hidden; background: var(--ha-card-background, var(--card-background-color)); }
+        .header { padding: 12px 16px 0; font-size: 16px; font-weight: 500; }
+        audio { display: none; }
+        .status { padding: 8px 16px 0; text-align: center; color: var(--secondary-text-color); font-size: 12px; }
+        .status:empty { display: none; }
+        .security-warning { margin: 12px 12px 0; padding: 10px 12px; border-radius: 8px;
+          color: var(--warning-color, #fbd150); background: color-mix(in srgb, var(--warning-color, #fbd150) 14%, transparent);
+          font-size: 13px; line-height: 1.4; }
+        .controls { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; }
+        button { border: 0; border-radius: 999px; min-width: 44px; height: 44px; padding: 0 14px;
+          background: var(--secondary-background-color); color: var(--primary-text-color); cursor: pointer;
+          touch-action: none; user-select: none; font: inherit; }
+        button:hover { filter: brightness(1.08); }
+        button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+        .talk { min-width: 132px; background: var(--primary-color); color: var(--text-primary-color, white); }
+        .talk.active { background: var(--error-color, #db4437); transform: scale(.97); }
+        .talk:disabled { opacity: .55; cursor: wait; }
+      </style>
+      <ha-card>
+        ${this._config.hide_title ? "" : '<div class="header"></div>'}
+        <audio autoplay playsinline muted></audio>
+        <div class="status">Connecting…</div>
+        ${window.isSecureContext ? "" : '<div class="security-warning" role="alert">HTTPS is required for microphone access. Open Home Assistant through a secure HTTPS address to use push-to-talk.</div>'}
+        <div class="controls">
+          <button class="sound" type="button" title="Enable camera audio" aria-label="Enable camera audio">🔇</button>
+          <button class="talk" type="button" aria-label="Hold to talk">Hold to talk</button>
+        </div>
+      </ha-card>`;
+
+    this._video = this.shadowRoot.querySelector("audio");
+    this._video.muted = this._muted;
+    this._status = this.shadowRoot.querySelector(".status");
+    this._talkButton = this.shadowRoot.querySelector(".talk");
+    this._soundButton = this.shadowRoot.querySelector(".sound");
+    if (!window.isSecureContext) {
+      this._talkButton.disabled = true;
+      this._talkButton.title = "HTTPS is required for microphone access";
+    }
+    this._talkButton.addEventListener("pointerdown", this._beginTalk);
+    this._talkButton.addEventListener("pointerup", this._endTalk);
+    this._talkButton.addEventListener("pointercancel", this._endTalk);
+    this._talkButton.addEventListener("pointerleave", this._endTalk);
+    this._talkButton.addEventListener("keydown", this._talkKeyDown);
+    this._talkButton.addEventListener("keyup", this._talkKeyUp);
+    this._soundButton.addEventListener("click", this._toggleSound);
+    this._updateTitle();
+    this._updateSoundButton();
+  }
+}
+
 if (!customElements.get("reolink-web-camera-card")) {
   customElements.define("reolink-web-camera-card", ReolinkWebCameraCard);
   window.customCards = window.customCards || [];
@@ -402,4 +492,16 @@ if (!customElements.get("reolink-web-camera-card")) {
     documentationURL: "https://github.com/rsre/HAReolink",
   });
   console.info(`%c REOLINK-WEB-CAMERA-CARD %c ${CARD_VERSION} `, "color:white;background:#067a9c", "color:#067a9c");
+}
+
+if (!customElements.get("reolink-web-audio-card")) {
+  customElements.define("reolink-web-audio-card", ReolinkWebAudioCard);
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: "reolink-web-audio-card",
+    name: "Reolink Web Audio",
+    description: "Audio-only Reolink card with WebRTC push-to-talk",
+    preview: true,
+    documentationURL: "https://github.com/rsre/HAReolink",
+  });
 }
