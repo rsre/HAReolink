@@ -7,18 +7,17 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_CHANNEL, CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
 
 from .api import ReolinkAuthError, ReolinkClient, ReolinkConnectionError, ReolinkError
 from .const import (
-    CONF_RTSP_PORT,
+    CONF_CHANNEL,
     CONF_STREAM,
     CONF_VERIFY_SSL,
     DEFAULT_CHANNEL,
-    DEFAULT_RTSP_PORT,
     DEFAULT_STREAM,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
@@ -67,7 +66,6 @@ class ReolinkWebConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_STREAM, default=DEFAULT_STREAM): SelectSelector(
                     SelectSelectorConfig(options=list(STREAMS), translation_key="stream")
                 ),
-                vol.Required(CONF_RTSP_PORT, default=DEFAULT_RTSP_PORT): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
                 vol.Required(CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL): bool,
             }
         )

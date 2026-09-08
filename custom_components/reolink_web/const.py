@@ -4,12 +4,11 @@ from homeassistant.const import Platform
 
 DOMAIN = "reolink_web"
 
-CONF_RTSP_PORT = "rtsp_port"
+CONF_CHANNEL = "channel"
 CONF_STREAM = "stream"
 CONF_VERIFY_SSL = "verify_ssl"
 
 DEFAULT_CHANNEL = 0
-DEFAULT_RTSP_PORT = 554
 DEFAULT_STREAM = "main"
 DEFAULT_VERIFY_SSL = False
 

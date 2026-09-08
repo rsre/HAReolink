@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import secrets
 import ssl
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import urlencode
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
@@ -57,6 +57,7 @@ class ReolinkClient:
         self.verify_ssl = verify_ssl
         self._token: str | None = None
         self._token_expires = datetime.min.replace(tzinfo=timezone.utc)
+        self._rtmp_port: int | None = None
 
     @property
     def base_url(self) -> str:
@@ -170,11 +171,19 @@ class ReolinkClient:
             raise ReolinkAuthError("Camera did not return a JPEG snapshot")
         return data
 
-    def rtsp_url(self, channel: int, stream: str, rtsp_port: int) -> str:
-        """Build the camera's native, full-quality RTSP preview URL."""
-        username = quote(self.username, safe="")
-        password = quote(self.password, safe="")
-        return (
-            f"rtsp://{username}:{password}@{self.host}:{rtsp_port}/"
-            f"h264Preview_{channel + 1:02d}_{stream}"
+    async def flv_url(self, channel: int, stream: str) -> str:
+        """Build the same authenticated FLV preview URL as the web console."""
+        token = await self.ensure_login()
+        if self._rtmp_port is None:
+            value = await self.command("GetNetPort")
+            net_port = value.get("NetPort", value)
+            self._rtmp_port = int(net_port.get("rtmpPort", 1935))
+        query = urlencode(
+            {
+                "token": token,
+                "port": self._rtmp_port,
+                "app": "bcs",
+                "stream": f"channel{channel}_{stream}.bcs",
+            }
         )
+        return f"{self.base_url}/flv?{query}"

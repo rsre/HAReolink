@@ -17,7 +17,6 @@
           "password": "Password",
           "channel": "Channel (zero-based)",
           "stream": "Video quality",
-          "rtsp_port": "RTSP port",
           "verify_ssl": "Verify HTTPS certificate"
         }
       }

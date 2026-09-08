@@ -2,6 +2,14 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.1.1] - 2026-09-08
+
+### Fixed
+
+- Fixed config-flow loading by defining the integration's channel key locally.
+- Replaced RTSP playback with the authenticated FLV endpoint used by the camera's
+  original web console.
+
 ## [0.1.0] - 2026-09-08
 
 ### Added
@@ -13,4 +21,5 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.1.1]: https://github.com/rsre/HAReolink/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/rsre/HAReolink/releases/tag/v0.1.0
