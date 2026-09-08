@@ -2,6 +2,15 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.3.0] - 2026-09-08
+
+### Added
+
+- Bundled Reolink Web Camera Lovelace card with native Home Assistant WebRTC
+  signaling, hold-to-talk microphone control, speaker mute, and fullscreen.
+- Automatic frontend module registration; no separate card repository or dashboard
+  resource installation is required.
+
 ## [0.2.0] - 2026-09-08
 
 ### Added
@@ -28,6 +37,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.3.0]: https://github.com/rsre/HAReolink/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/rsre/HAReolink/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/rsre/HAReolink/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/rsre/HAReolink/releases/tag/v0.1.0

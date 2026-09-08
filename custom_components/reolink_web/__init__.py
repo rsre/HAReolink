@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry, ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
 from homeassistant.core import HomeAssistant
@@ -11,6 +15,18 @@ from .api import ReolinkAuthError, ReolinkClient, ReolinkConnectionError
 from .const import DEFAULT_VERIFY_SSL, DOMAIN, PLATFORMS, CONF_VERIFY_SSL
 
 type ReolinkConfigEntry = ConfigEntry[ReolinkClient]
+
+CARD_URL = "/reolink_web/reolink-web-camera-card.js"
+CARD_PATH = Path(__file__).parent / "frontend" / "reolink-web-camera-card.js"
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Register the bundled Lovelace card once when the integration loads."""
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(CARD_URL, str(CARD_PATH), True)]
+    )
+    add_extra_js_url(hass, f"{CARD_URL}?v=0.3.0")
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ReolinkConfigEntry) -> bool:

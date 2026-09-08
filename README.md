@@ -35,6 +35,20 @@ and grant the browser microphone permission. Two-way audio depends on the camera
 firmware exposing a compatible RTSP/ONVIF backchannel; unsupported models continue
 to provide video and camera-to-browser audio normally.
 
+The integration bundles and automatically registers the **Reolink Web Camera**
+dashboard card. Add it through the dashboard card picker, or use YAML:
+
+```yaml
+type: custom:reolink-web-camera-card
+entity: camera.your_reolink_camera
+title: Front door
+```
+
+Hold **Hold to talk** while speaking and release it to stop. The card requests
+microphone access only when the control is pressed and releases the microphone
+immediately afterward. Home Assistant must be opened over HTTPS (or localhost)
+because browsers block microphone capture on insecure origins.
+
 The integration communicates locally with the camera. Credentials are stored in
 Home Assistant's config entry and are never committed to this repository.
 
