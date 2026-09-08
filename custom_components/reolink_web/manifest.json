@@ -3,11 +3,11 @@
   "name": "Reolink Web Console",
   "codeowners": ["@rsre"],
   "config_flow": true,
-  "dependencies": ["stream"],
+  "dependencies": ["go2rtc", "stream"],
   "documentation": "https://github.com/rsre/HAReolink",
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/rsre/HAReolink/issues",
   "requirements": [],
-  "version": "0.1.1"
+  "version": "0.2.0"
 }

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import secrets
 import ssl
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
@@ -187,3 +187,14 @@ class ReolinkClient:
             }
         )
         return f"{self.base_url}/flv?{query}"
+
+    def rtsp_backchannel_url(
+        self, channel: int, stream: str, rtsp_port: int
+    ) -> str:
+        """Build the secondary RTSP source used only for its audio backchannel."""
+        username = quote(self.username, safe="")
+        password = quote(self.password, safe="")
+        return (
+            f"rtsp://{username}:{password}@{self.host}:{rtsp_port}/"
+            f"h264Preview_{channel + 1:02d}_{stream}#media=audio"
+        )

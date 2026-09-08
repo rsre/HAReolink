@@ -15,9 +15,11 @@ from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
 from .api import ReolinkAuthError, ReolinkClient, ReolinkConnectionError, ReolinkError
 from .const import (
     CONF_CHANNEL,
+    CONF_RTSP_PORT,
     CONF_STREAM,
     CONF_VERIFY_SSL,
     DEFAULT_CHANNEL,
+    DEFAULT_RTSP_PORT,
     DEFAULT_STREAM,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
@@ -65,6 +67,9 @@ class ReolinkWebConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_CHANNEL, default=DEFAULT_CHANNEL): vol.All(vol.Coerce(int), vol.Range(min=0)),
                 vol.Required(CONF_STREAM, default=DEFAULT_STREAM): SelectSelector(
                     SelectSelectorConfig(options=list(STREAMS), translation_key="stream")
+                ),
+                vol.Required(CONF_RTSP_PORT, default=DEFAULT_RTSP_PORT): vol.All(
+                    vol.Coerce(int), vol.Range(min=1, max=65535)
                 ),
                 vol.Required(CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL): bool,
             }
