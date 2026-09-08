@@ -2,6 +2,13 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.4.2] - 2026-09-08
+
+### Added
+
+- Detect insecure browser contexts, show a persistent HTTPS requirement warning,
+  and disable push-to-talk when microphone capture cannot be securely requested.
+
 ## [0.4.1] - 2026-09-08
 
 ### Changed
@@ -72,6 +79,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.4.2]: https://github.com/rsre/HAReolink/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/rsre/HAReolink/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/rsre/HAReolink/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/rsre/HAReolink/compare/v0.3.1...v0.3.2

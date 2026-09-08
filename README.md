@@ -50,6 +50,10 @@ microphone access only when the control is pressed and releases the microphone
 immediately afterward. Home Assistant must be opened over HTTPS (or localhost)
 because browsers block microphone capture on insecure origins.
 
+When the browser reports an insecure context, the card displays an HTTPS warning
+and disables push-to-talk. Browser-recognized secure localhost addresses continue
+to work without a certificate.
+
 Click the video to open Home Assistant's native camera dialog. Set `hide_title` to
 `true` for a titleless card. The stream starts muted; using push-to-talk keeps
 inbound sound muted while transmitting to avoid feedback, then enables it on

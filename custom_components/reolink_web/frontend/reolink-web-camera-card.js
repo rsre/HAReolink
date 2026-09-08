@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.4.1";
+const CARD_VERSION = "0.4.2";
 
 class ReolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -105,6 +105,9 @@ class ReolinkWebCameraCard extends HTMLElement {
         .status { position: absolute; inset: auto 10px 10px; padding: 6px 9px; border-radius: 6px;
           color: white; background: rgba(0,0,0,.68); font-size: 12px; pointer-events: none; }
         .status:empty { display: none; }
+        .security-warning { margin: 12px 12px 0; padding: 10px 12px; border-radius: 8px;
+          color: var(--warning-color, #fbd150); background: color-mix(in srgb, var(--warning-color, #fbd150) 14%, transparent);
+          font-size: 13px; line-height: 1.4; }
         .controls { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; }
         button { border: 0; border-radius: 999px; min-width: 44px; height: 44px; padding: 0 14px;
           background: var(--secondary-background-color); color: var(--primary-text-color); cursor: pointer;
@@ -121,6 +124,7 @@ class ReolinkWebCameraCard extends HTMLElement {
           <video autoplay playsinline muted></video>
           <div class="status">Connecting…</div>
         </div>
+        ${window.isSecureContext ? "" : '<div class="security-warning" role="alert">HTTPS is required for microphone access. Open Home Assistant through a secure HTTPS address to use push-to-talk.</div>'}
         <div class="controls">
           <button class="sound" type="button" title="Enable camera audio" aria-label="Enable camera audio">🔇</button>
           <button class="talk" type="button" aria-label="Hold to talk">Hold to talk</button>
@@ -131,6 +135,10 @@ class ReolinkWebCameraCard extends HTMLElement {
     this._video.muted = this._muted;
     this._status = this.shadowRoot.querySelector(".status");
     this._talkButton = this.shadowRoot.querySelector(".talk");
+    if (!window.isSecureContext) {
+      this._talkButton.disabled = true;
+      this._talkButton.title = "HTTPS is required for microphone access";
+    }
     this._soundButton = this.shadowRoot.querySelector(".sound");
 
     this._talkButton.addEventListener("pointerdown", this._beginTalk);
@@ -269,6 +277,10 @@ class ReolinkWebCameraCard extends HTMLElement {
 
   _beginTalk = async (event) => {
     event.preventDefault();
+    if (!window.isSecureContext) {
+      this._setStatus("HTTPS is required for microphone access");
+      return;
+    }
     if (this._talking || !this._audioSender) return;
     this._talkRequested = true;
     this._talkButton.disabled = true;
