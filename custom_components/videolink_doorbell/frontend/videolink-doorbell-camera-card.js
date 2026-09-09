@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.7.1";
+const CARD_VERSION = "0.8.0";
 
 class VideolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -37,6 +37,7 @@ class VideolinkWebCameraCard extends HTMLElement {
         { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
         { name: "title", selector: { text: {} } },
         { name: "hide_title", selector: { boolean: {} } },
+        { name: "hide_controls", selector: { boolean: {} } },
         { name: "disable_popup", selector: { boolean: {} } },
         { name: "debug", selector: { boolean: {} } },
       ],
@@ -44,6 +45,7 @@ class VideolinkWebCameraCard extends HTMLElement {
         entity: "Camera entity",
         title: "Title",
         hide_title: "Hide card title",
+        hide_controls: "Hide PTT and mute buttons",
         disable_popup: "Disable video popup",
         debug: "Show stream diagnostics",
       })[schema.name],
@@ -58,6 +60,7 @@ class VideolinkWebCameraCard extends HTMLElement {
     const changed = previous?.entity !== config.entity;
     this._config = {
       hide_title: false,
+      hide_controls: false,
       disable_popup: false,
       debug: false,
       ...config,
@@ -152,11 +155,11 @@ class VideolinkWebCameraCard extends HTMLElement {
           <video autoplay playsinline muted></video>
           <div class="status">Connecting…</div>
         </div>
-        ${window.isSecureContext ? "" : '<div class="security-warning" role="alert">HTTPS is required for microphone access. Open Home Assistant through a secure HTTPS address to use push-to-talk.</div>'}
-        <div class="controls">
+        ${window.isSecureContext || this._config.hide_controls ? "" : '<div class="security-warning" role="alert">HTTPS is required for microphone access. Open Home Assistant through a secure HTTPS address to use push-to-talk.</div>'}
+        ${this._config.hide_controls ? "" : `<div class="controls">
           <button class="sound" type="button" title="Enable camera audio" aria-label="Enable camera audio">🔇</button>
           <button class="talk" type="button" aria-label="Hold to talk">Hold to talk</button>
-        </div>
+        </div>`}
         ${this._config.debug ? '<details class="diagnostics" open><summary>Stream diagnostics</summary><pre></pre><button class="copy-diagnostics" type="button">Copy diagnostics</button></details>' : ""}
       </ha-card>`;
 
@@ -168,13 +171,13 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._diagnosticsOutput = this.shadowRoot.querySelector(".diagnostics pre");
     this._copyDiagnosticsButton = this.shadowRoot.querySelector(".copy-diagnostics");
 
-    this._talkButton.addEventListener("pointerdown", this._beginTalk);
-    this._talkButton.addEventListener("pointerup", this._endTalk);
-    this._talkButton.addEventListener("pointercancel", this._endTalk);
-    this._talkButton.addEventListener("pointerleave", this._endTalk);
-    this._talkButton.addEventListener("keydown", this._talkKeyDown);
-    this._talkButton.addEventListener("keyup", this._talkKeyUp);
-    this._soundButton.addEventListener("click", this._toggleSound);
+    this._talkButton?.addEventListener("pointerdown", this._beginTalk);
+    this._talkButton?.addEventListener("pointerup", this._endTalk);
+    this._talkButton?.addEventListener("pointercancel", this._endTalk);
+    this._talkButton?.addEventListener("pointerleave", this._endTalk);
+    this._talkButton?.addEventListener("keydown", this._talkKeyDown);
+    this._talkButton?.addEventListener("keyup", this._talkKeyUp);
+    this._soundButton?.addEventListener("click", this._toggleSound);
     this._copyDiagnosticsButton?.addEventListener("click", this._copyDiagnostics);
     const stage = this.shadowRoot.querySelector(".stage");
     if (!this._config.disable_popup) {
