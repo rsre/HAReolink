@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.9.0";
+const CARD_VERSION = "0.10.0";
 
 class VideolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -28,7 +28,7 @@ class VideolinkWebCameraCard extends HTMLElement {
 
   static getStubConfig(hass, entities) {
     const entity = entities?.find((candidate) => candidate.startsWith("camera."));
-    return { entity: entity || "" };
+    return { entity: entity || "", video_fit: "contain" };
   }
 
   static getConfigForm() {
@@ -36,10 +36,11 @@ class VideolinkWebCameraCard extends HTMLElement {
       schema: [
         { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
         { name: "title", selector: { text: {} } },
-        { name: "video_fit", selector: { select: { options: [
-          { value: "cover", label: "Cropped (cover)" },
-          { value: "contain", label: "Scaled (contain)" },
-          { value: "fill", label: "Stretched (fill)" },
+        { name: "video_fit", default: "contain", selector: { select: { mode: "dropdown", options: [
+          { value: "cover", label: "Cropped" },
+          { value: "contain", label: "Scaled" },
+          { value: "fill", label: "Stretched" },
+          { value: "full", label: "Full" },
         ] } } },
         { name: "hide_title", selector: { boolean: {} } },
         { name: "hide_controls", selector: { boolean: {} } },
@@ -64,7 +65,7 @@ class VideolinkWebCameraCard extends HTMLElement {
     }
     const previous = this._config;
     const changed = previous?.entity !== config.entity;
-    const videoFit = ["cover", "contain", "fill"].includes(config.video_fit)
+    const videoFit = ["cover", "contain", "fill", "full"].includes(config.video_fit)
       ? config.video_fit
       : "contain";
     this._config = {
@@ -130,8 +131,10 @@ class VideolinkWebCameraCard extends HTMLElement {
         ha-card { overflow: hidden; background: var(--ha-card-background, var(--card-background-color)); }
         .header { padding: 12px 16px; font-size: 16px; font-weight: 500; }
         .stage { position: relative; background: #000; aspect-ratio: 16 / 9; }
+        .stage.fit-full { aspect-ratio: auto; }
         .stage.popup-enabled { cursor: pointer; }
         video { width: 100%; height: 100%; display: block; object-fit: ${this._config.video_fit}; background: #000; }
+        .stage.fit-full video { height: auto; object-fit: contain; }
         .status { position: absolute; inset: auto 10px 10px; padding: 6px 9px; border-radius: 6px;
           color: white; background: rgba(0,0,0,.68); font-size: 12px; pointer-events: none; }
         .status:empty { display: none; }
@@ -160,7 +163,7 @@ class VideolinkWebCameraCard extends HTMLElement {
       </style>
       <ha-card>
         ${this._config.hide_title ? "" : '<div class="header"></div>'}
-        <div class="stage ${this._config.disable_popup ? "" : "popup-enabled"}"
+        <div class="stage ${this._config.disable_popup ? "" : "popup-enabled"} ${this._config.video_fit === "full" ? "fit-full" : ""}"
           ${this._config.disable_popup ? "" : 'role="button" tabindex="0" aria-label="Open camera stream"'}>
           <video autoplay playsinline muted></video>
           <div class="status">Connecting…</div>

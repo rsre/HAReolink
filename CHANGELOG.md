@@ -2,6 +2,18 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.10.0] - 2026-09-10
+
+### Added
+
+- Added a `full` video-fit mode that sizes the card to the stream's native aspect
+  ratio without cropping, stretching, or letterboxing.
+
+### Changed
+
+- The video-fit editor control is now a dropdown with shorter option labels and
+  Scaled selected by default.
+
 ## [0.9.0] - 2026-09-10
 
 ### Added
@@ -153,6 +165,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.10.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/rsre/VideolinkDoorbell/compare/v0.7.0...v0.7.1
