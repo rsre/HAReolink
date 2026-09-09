@@ -30,23 +30,24 @@ The stream starts muted; using push-to-talk keeps inbound sound muted while tran
 
 ## Cards
 
-The integration bundles and automatically registers the **Videolink Doorbell Camera** dashboard card. Add it through the dashboard card picker, or use YAML:
+The integration bundles and automatically registers the **Videolink Doorbell** dashboard card. Add it through the dashboard card picker, or use YAML:
 
 ```yaml
-type: custom:videolink-doorbell-camera-card
+type: custom:videolink-doorbell
 entity: camera.your_videolink_camera
 ```
 
 Hold **Hold to talk** while speaking and release it to stop. The card requests microphone access only when the control is pressed and releases the microphone immediately afterward. Home Assistant must be used over HTTPS (or localhost) because browsers block microphone capture on insecure origins.
 
-For an audio-only intercom without a video stream, use the bundled **Videolink Doorbell Audio** card from the card picker, or add it in YAML:
+For an audio-only intercom, set `hide_video: true` on the camera card:
 
 ```yaml
-type: custom:videolink-doorbell-audio-card
+type: custom:videolink-doorbell
 entity: camera.your_videolink_camera
+hide_video: true
 ```
 
-The audio card negotiates only camera audio and the push-to-talk backchannel. It uses the same speaker mute control, HTTPS check, and automatic listening after push-to-talk as the camera card.
+Audio-only mode negotiates only camera audio and the push-to-talk backchannel.
 
 ### Settings
 
@@ -56,7 +57,8 @@ The audio card negotiates only camera audio and the push-to-talk backchannel. It
   to the stream's native aspect ratio. The default is `contain`.
 - `disable_popup` to disable open Home Assistant's native camera dialog when clicking the video.
 - `hide_title` for a titleless card.
-- `hide_controls` to hide both the mute and push-to-talk buttons for a video-only card.
+- `hide_video` to switch the card to its compact, audio-only intercom mode.
+- `hide_controls` to hide both the mute and push-to-talk buttons.
 - `debug` to show debug information and metrics like live WebRTC transport and PTT timing diagnostics.
 
 ## Versions

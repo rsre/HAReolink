@@ -17,7 +17,7 @@ from .const import DEFAULT_VERIFY_SSL, DOMAIN, PLATFORMS, CONF_VERIFY_SSL
 
 type VideolinkConfigEntry = ConfigEntry[VideolinkClient]
 
-CARD_URL = "/videolink_doorbell/videolink-doorbell-camera-card.js"
+CARD_URL = "/videolink_doorbell/videolink-doorbell.js"
 CARD_PATH = Path(__file__).parent / "frontend" / "videolink-doorbell-camera-card.js"
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -27,7 +27,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     await hass.http.async_register_static_paths(
         [StaticPathConfig(CARD_URL, str(CARD_PATH), True)]
     )
-    add_extra_js_url(hass, f"{CARD_URL}?v=0.10.0")
+    add_extra_js_url(hass, f"{CARD_URL}?v=0.11.0")
     return True
 
 

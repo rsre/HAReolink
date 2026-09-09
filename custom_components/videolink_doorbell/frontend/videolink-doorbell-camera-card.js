@@ -1,6 +1,6 @@
-const CARD_VERSION = "0.10.0";
+const CARD_VERSION = "0.11.0";
 
-class VideolinkWebCameraCard extends HTMLElement {
+class VideolinkDoorbellCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -43,6 +43,7 @@ class VideolinkWebCameraCard extends HTMLElement {
           { value: "full", label: "Full" },
         ] } } },
         { name: "hide_title", selector: { boolean: {} } },
+        { name: "hide_video", selector: { boolean: {} } },
         { name: "hide_controls", selector: { boolean: {} } },
         { name: "disable_popup", selector: { boolean: {} } },
         { name: "debug", selector: { boolean: {} } },
@@ -52,6 +53,7 @@ class VideolinkWebCameraCard extends HTMLElement {
         title: "Title",
         video_fit: "Video fit",
         hide_title: "Hide card title",
+        hide_video: "Hide video stream",
         hide_controls: "Hide PTT and mute buttons",
         disable_popup: "Disable video popup",
         debug: "Show stream diagnostics",
@@ -65,11 +67,13 @@ class VideolinkWebCameraCard extends HTMLElement {
     }
     const previous = this._config;
     const changed = previous?.entity !== config.entity;
+    const mediaChanged = changed || previous?.hide_video !== Boolean(config.hide_video);
     const videoFit = ["cover", "contain", "fill", "full"].includes(config.video_fit)
       ? config.video_fit
       : "contain";
     this._config = {
       hide_title: false,
+      hide_video: false,
       hide_controls: false,
       disable_popup: false,
       debug: false,
@@ -78,7 +82,7 @@ class VideolinkWebCameraCard extends HTMLElement {
     };
     if (!previous || changed) this._muted = true;
     this._render();
-    if (changed && this.isConnected) {
+    if (mediaChanged && this.isConnected) {
       this._restart();
     }
   }
@@ -93,15 +97,17 @@ class VideolinkWebCameraCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 5;
+    return this._audioOnly ? 2 : 5;
   }
 
   get _audioOnly() {
-    return false;
+    return Boolean(this._config?.hide_video);
   }
 
   getGridOptions() {
-    return { rows: 5, columns: 12, min_rows: 3, min_columns: 6 };
+    return this._audioOnly
+      ? { rows: 2, columns: 12, min_rows: 1, min_columns: 4 }
+      : { rows: 5, columns: 12, min_rows: 3, min_columns: 6 };
   }
 
   connectedCallback() {
@@ -125,19 +131,24 @@ class VideolinkWebCameraCard extends HTMLElement {
 
   _render() {
     if (!this.shadowRoot || !this._config) return;
+    const audioOnly = this._audioOnly;
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
         ha-card { overflow: hidden; background: var(--ha-card-background, var(--card-background-color)); }
         .header { padding: 12px 16px; font-size: 16px; font-weight: 500; }
+        .audio-only .header { padding-bottom: 0; }
         .stage { position: relative; background: #000; aspect-ratio: 16 / 9; }
         .stage.fit-full { aspect-ratio: auto; }
         .stage.popup-enabled { cursor: pointer; }
         video { width: 100%; height: 100%; display: block; object-fit: ${this._config.video_fit}; background: #000; }
         .stage.fit-full video { height: auto; object-fit: contain; }
+        audio { display: none; }
         .status { position: absolute; inset: auto 10px 10px; padding: 6px 9px; border-radius: 6px;
           color: white; background: rgba(0,0,0,.68); font-size: 12px; pointer-events: none; }
         .status:empty { display: none; }
+        .audio-only .status { position: static; padding: 8px 16px 0; text-align: center;
+          color: var(--secondary-text-color); background: none; }
         .security-warning { margin: 12px 12px 0; padding: 10px 12px; border-radius: 8px;
           color: var(--warning-color, #fbd150); background: color-mix(in srgb, var(--warning-color, #fbd150) 14%, transparent);
           font-size: 13px; line-height: 1.4; }
@@ -161,13 +172,14 @@ class VideolinkWebCameraCard extends HTMLElement {
           user-select: text; -webkit-user-select: text; cursor: text; }
         .copy-diagnostics { min-width: 0; height: 32px; padding: 0 12px; font-size: 12px; }
       </style>
-      <ha-card>
+      <ha-card class="${audioOnly ? "audio-only" : ""}">
         ${this._config.hide_title ? "" : '<div class="header"></div>'}
-        <div class="stage ${this._config.disable_popup ? "" : "popup-enabled"} ${this._config.video_fit === "full" ? "fit-full" : ""}"
+        ${audioOnly ? `<audio autoplay playsinline muted></audio>
+        <div class="status">Connecting…</div>` : `<div class="stage ${this._config.disable_popup ? "" : "popup-enabled"} ${this._config.video_fit === "full" ? "fit-full" : ""}"
           ${this._config.disable_popup ? "" : 'role="button" tabindex="0" aria-label="Open camera stream"'}>
           <video autoplay playsinline muted></video>
           <div class="status">Connecting…</div>
-        </div>
+        </div>`}
         ${window.isSecureContext || this._config.hide_controls ? "" : '<div class="security-warning" role="alert">HTTPS is required for microphone access. Open Home Assistant through a secure HTTPS address to use push-to-talk.</div>'}
         ${this._config.hide_controls ? "" : `<div class="controls">
           <button class="sound" type="button" title="Enable camera audio" aria-label="Enable camera audio">🔇</button>
@@ -176,7 +188,7 @@ class VideolinkWebCameraCard extends HTMLElement {
         ${this._config.debug ? '<details class="diagnostics" open><summary>Stream diagnostics</summary><pre></pre><button class="copy-diagnostics" type="button">Copy diagnostics</button></details>' : ""}
       </ha-card>`;
 
-    this._video = this.shadowRoot.querySelector("video");
+    this._video = this.shadowRoot.querySelector("video, audio");
     this._video.muted = this._muted;
     this._status = this.shadowRoot.querySelector(".status");
     this._talkButton = this.shadowRoot.querySelector(".talk");
@@ -193,7 +205,7 @@ class VideolinkWebCameraCard extends HTMLElement {
     this._soundButton?.addEventListener("click", this._toggleSound);
     this._copyDiagnosticsButton?.addEventListener("click", this._copyDiagnostics);
     const stage = this.shadowRoot.querySelector(".stage");
-    if (!this._config.disable_popup) {
+    if (stage && !this._config.disable_popup) {
       stage.addEventListener("click", this._openMoreInfo);
       stage.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") this._openMoreInfo(event);
@@ -579,126 +591,15 @@ class VideolinkWebCameraCard extends HTMLElement {
   }
 }
 
-class VideolinkWebAudioCard extends VideolinkWebCameraCard {
-  static getConfigForm() {
-    return {
-      schema: [
-        { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
-        { name: "title", selector: { text: {} } },
-        { name: "hide_title", selector: { boolean: {} } },
-        { name: "debug", selector: { boolean: {} } },
-      ],
-      computeLabel: (schema) => ({
-        entity: "Camera entity",
-        title: "Title",
-        hide_title: "Hide card title",
-        debug: "Show stream diagnostics",
-      })[schema.name],
-    };
-  }
-
-  get _audioOnly() {
-    return true;
-  }
-
-  getCardSize() {
-    return 2;
-  }
-
-  getGridOptions() {
-    return { rows: 2, columns: 12, min_rows: 1, min_columns: 4 };
-  }
-
-  _render() {
-    if (!this.shadowRoot || !this._config) return;
-    this.shadowRoot.innerHTML = `
-      <style>
-        :host { display: block; }
-        ha-card { overflow: hidden; background: var(--ha-card-background, var(--card-background-color)); }
-        .header { padding: 12px 16px 0; font-size: 16px; font-weight: 500; }
-        audio { display: none; }
-        .status { padding: 8px 16px 0; text-align: center; color: var(--secondary-text-color); font-size: 12px; }
-        .status:empty { display: none; }
-        .security-warning { margin: 12px 12px 0; padding: 10px 12px; border-radius: 8px;
-          color: var(--warning-color, #fbd150); background: color-mix(in srgb, var(--warning-color, #fbd150) 14%, transparent);
-          font-size: 13px; line-height: 1.4; }
-        .controls { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; }
-        button { border: 0; border-radius: 999px; min-width: 44px; height: 44px; padding: 0 14px;
-          background: var(--secondary-background-color); color: var(--primary-text-color); cursor: pointer;
-          touch-action: none; user-select: none; font: inherit; }
-        button:hover { filter: brightness(1.08); }
-        button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
-        .talk { min-width: 132px; background: var(--primary-color); color: var(--text-primary-color, white); }
-        .talk.loading::before { content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 8px;
-          border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -2px;
-          animation: spin .8s linear infinite; }
-        .talk.active { background: var(--error-color, #db4437); transform: scale(.97); }
-        .talk:disabled { opacity: .55; cursor: wait; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .diagnostics { margin: 0 12px 12px; padding: 8px 10px; border-radius: 8px;
-          background: var(--secondary-background-color); color: var(--secondary-text-color); font-size: 12px; }
-        .diagnostics summary { cursor: pointer; color: var(--primary-text-color); font-weight: 500; }
-        .diagnostics pre { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.45 monospace;
-          user-select: text; -webkit-user-select: text; cursor: text; }
-        .copy-diagnostics { min-width: 0; height: 32px; padding: 0 12px; font-size: 12px; }
-      </style>
-      <ha-card>
-        ${this._config.hide_title ? "" : '<div class="header"></div>'}
-        <audio autoplay playsinline muted></audio>
-        <div class="status">Connecting…</div>
-        ${window.isSecureContext ? "" : '<div class="security-warning" role="alert">HTTPS is required for microphone access. Open Home Assistant through a secure HTTPS address to use push-to-talk.</div>'}
-        <div class="controls">
-          <button class="sound" type="button" title="Enable camera audio" aria-label="Enable camera audio">🔇</button>
-          <button class="talk" type="button" aria-label="Hold to talk">Hold to talk</button>
-        </div>
-        ${this._config.debug ? '<details class="diagnostics" open><summary>Stream diagnostics</summary><pre></pre><button class="copy-diagnostics" type="button">Copy diagnostics</button></details>' : ""}
-      </ha-card>`;
-
-    this._video = this.shadowRoot.querySelector("audio");
-    this._video.muted = this._muted;
-    this._status = this.shadowRoot.querySelector(".status");
-    this._talkButton = this.shadowRoot.querySelector(".talk");
-    this._soundButton = this.shadowRoot.querySelector(".sound");
-    this._diagnosticsOutput = this.shadowRoot.querySelector(".diagnostics pre");
-    this._copyDiagnosticsButton = this.shadowRoot.querySelector(".copy-diagnostics");
-    this._talkButton.addEventListener("pointerdown", this._beginTalk);
-    this._talkButton.addEventListener("pointerup", this._endTalk);
-    this._talkButton.addEventListener("pointercancel", this._endTalk);
-    this._talkButton.addEventListener("pointerleave", this._endTalk);
-    this._talkButton.addEventListener("keydown", this._talkKeyDown);
-    this._talkButton.addEventListener("keyup", this._talkKeyUp);
-    this._soundButton.addEventListener("click", this._toggleSound);
-    this._copyDiagnosticsButton?.addEventListener("click", this._copyDiagnostics);
-    this._updateTitle();
-    this._updateSoundButton();
-    this._updateTalkButton();
-    this._updateDiagnosticsView();
-    if (this._config.debug && this._peer) this._startDiagnostics();
-    else if (!this._config.debug) this._stopDiagnostics();
-  }
-}
-
-if (!customElements.get("videolink-doorbell-camera-card")) {
-  customElements.define("videolink-doorbell-camera-card", VideolinkWebCameraCard);
+if (!customElements.get("videolink-doorbell")) {
+  customElements.define("videolink-doorbell", VideolinkDoorbellCard);
   window.customCards = window.customCards || [];
   window.customCards.push({
-    type: "videolink-doorbell-camera-card",
-    name: "Videolink Doorbell Camera",
-    description: "Videolink FLV camera card with WebRTC push-to-talk",
+    type: "videolink-doorbell",
+    name: "Videolink Doorbell",
+    description: "Videolink camera and intercom card with WebRTC push-to-talk",
     preview: true,
     documentationURL: "https://github.com/rsre/VideolinkDoorbell",
   });
   console.info(`%c VIDEOLINK-DOORBELL-CARD %c ${CARD_VERSION} `, "color:white;background:#067a9c", "color:#067a9c");
-}
-
-if (!customElements.get("videolink-doorbell-audio-card")) {
-  customElements.define("videolink-doorbell-audio-card", VideolinkWebAudioCard);
-  window.customCards = window.customCards || [];
-  window.customCards.push({
-    type: "videolink-doorbell-audio-card",
-    name: "Videolink Doorbell Audio",
-    description: "Audio-only Videolink card with WebRTC push-to-talk",
-    preview: true,
-    documentationURL: "https://github.com/rsre/VideolinkDoorbell",
-  });
 }

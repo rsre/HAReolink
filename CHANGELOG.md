@@ -2,6 +2,17 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## [0.11.0] - 2026-09-10
+
+### Added
+
+- Added a `hide_video` camera-card setting for compact audio-only operation.
+
+### Changed
+
+- Replaced the separate camera and audio cards with one `custom:videolink-doorbell`
+  card. Existing dashboard configurations must be updated to the new card type.
+
 ## [0.10.0] - 2026-09-10
 
 ### Added
@@ -165,6 +176,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Configurable channel, HTTPS port, RTSP port, and TLS verification.
 - HACS metadata and automated HACS/Hassfest validation.
 
+[0.11.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/rsre/VideolinkDoorbell/compare/v0.7.1...v0.8.0
