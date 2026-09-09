@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.8.0";
+const CARD_VERSION = "0.9.0";
 
 class VideolinkWebCameraCard extends HTMLElement {
   constructor() {
@@ -36,6 +36,11 @@ class VideolinkWebCameraCard extends HTMLElement {
       schema: [
         { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
         { name: "title", selector: { text: {} } },
+        { name: "video_fit", selector: { select: { options: [
+          { value: "cover", label: "Cropped (cover)" },
+          { value: "contain", label: "Scaled (contain)" },
+          { value: "fill", label: "Stretched (fill)" },
+        ] } } },
         { name: "hide_title", selector: { boolean: {} } },
         { name: "hide_controls", selector: { boolean: {} } },
         { name: "disable_popup", selector: { boolean: {} } },
@@ -44,6 +49,7 @@ class VideolinkWebCameraCard extends HTMLElement {
       computeLabel: (schema) => ({
         entity: "Camera entity",
         title: "Title",
+        video_fit: "Video fit",
         hide_title: "Hide card title",
         hide_controls: "Hide PTT and mute buttons",
         disable_popup: "Disable video popup",
@@ -58,12 +64,16 @@ class VideolinkWebCameraCard extends HTMLElement {
     }
     const previous = this._config;
     const changed = previous?.entity !== config.entity;
+    const videoFit = ["cover", "contain", "fill"].includes(config.video_fit)
+      ? config.video_fit
+      : "contain";
     this._config = {
       hide_title: false,
       hide_controls: false,
       disable_popup: false,
       debug: false,
       ...config,
+      video_fit: videoFit,
     };
     if (!previous || changed) this._muted = true;
     this._render();
@@ -121,7 +131,7 @@ class VideolinkWebCameraCard extends HTMLElement {
         .header { padding: 12px 16px; font-size: 16px; font-weight: 500; }
         .stage { position: relative; background: #000; aspect-ratio: 16 / 9; }
         .stage.popup-enabled { cursor: pointer; }
-        video { width: 100%; height: 100%; display: block; object-fit: contain; background: #000; }
+        video { width: 100%; height: 100%; display: block; object-fit: ${this._config.video_fit}; background: #000; }
         .status { position: absolute; inset: auto 10px 10px; padding: 6px 9px; border-radius: 6px;
           color: white; background: rgba(0,0,0,.68); font-size: 12px; pointer-events: none; }
         .status:empty { display: none; }

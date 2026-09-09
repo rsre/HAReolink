@@ -51,6 +51,9 @@ The audio card negotiates only camera audio and the push-to-talk backchannel. It
 ### Settings
 
 - `title` to set a custom title on the card.
+- `video_fit` controls how video fits the 16:9 card: `cover` crops it, `contain`
+  scales the entire frame with letterboxing, and `fill` stretches it. The default
+  is `contain`.
 - `disable_popup` to disable open Home Assistant's native camera dialog when clicking the video.
 - `hide_title` for a titleless card.
 - `hide_controls` to hide both the mute and push-to-talk buttons for a video-only card.
