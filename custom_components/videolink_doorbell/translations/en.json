@@ -1,6 +1,10 @@
 {
   "config": {
-    "abort": {"already_configured": "This camera is already configured."},
+    "abort": {
+      "already_configured": "This camera is already configured.",
+      "reauth_successful": "Authentication was updated successfully.",
+      "reconfigure_successful": "Configuration was updated successfully."
+    },
     "error": {
       "cannot_connect": "Failed to connect to the camera.",
       "invalid_auth": "Invalid username or password.",
@@ -19,6 +23,28 @@
           "stream": "Video quality",
           "rtsp_port": "RTSP backchannel port",
           "verify_ssl": "Verify HTTPS certificate"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Videolink Doorbell",
+        "description": "Update the camera connection and stream settings.",
+        "data": {
+          "host": "Host",
+          "port": "HTTPS port",
+          "username": "Username",
+          "password": "Password",
+          "channel": "Channel (zero-based)",
+          "stream": "Video quality",
+          "rtsp_port": "RTSP backchannel port",
+          "verify_ssl": "Verify HTTPS certificate"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Videolink Doorbell",
+        "description": "Enter valid camera credentials.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
         }
       }
     }
