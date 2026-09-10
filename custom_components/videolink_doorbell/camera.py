@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from homeassistant.components.camera import Camera, CameraEntityFeature
-from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo as HADeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -20,6 +20,7 @@ from .const import (
     DEFAULT_STREAM,
     DOMAIN,
 )
+from .go2rtc import get_streams_api
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,9 +43,13 @@ class VideolinkWebCamera(Camera):
     _attr_name = None
     _attr_supported_features = CameraEntityFeature.STREAM
 
-    def __init__(self, entry: ConfigEntry[VideolinkClient], client: VideolinkClient, info: DeviceInfo) -> None:
+    def __init__(
+        self,
+        entry: ConfigEntry[VideolinkClient],
+        client: VideolinkClient,
+        info: DeviceInfo,
+    ) -> None:
         super().__init__()
-        self._entry = entry
         self._client = client
         self._channel = entry.data.get(CONF_CHANNEL, DEFAULT_CHANNEL)
         self._stream = entry.data.get(CONF_STREAM, DEFAULT_STREAM)
@@ -60,7 +65,9 @@ class VideolinkWebCamera(Camera):
             configuration_url=client.base_url,
         )
 
-    async def async_camera_image(self, width: int | None = None, height: int | None = None) -> bytes | None:
+    async def async_camera_image(
+        self, width: int | None = None, height: int | None = None
+    ) -> bytes | None:
         """Return the current console snapshot."""
         return await self._client.snapshot(self._channel)
 
@@ -77,17 +84,8 @@ class VideolinkWebCamera(Camera):
         # provider preserves it because the primary FLV producer already matches.
         from homeassistant.components.go2rtc.util import get_camera_identifier
 
-        entries = self.hass.config_entries.async_entries("go2rtc")
-        provider = next(
-            (
-                entry.runtime_data
-                for entry in entries
-                if entry.state is ConfigEntryState.LOADED
-            ),
-            None,
-        )
-        rest_client = getattr(provider, "_rest_client", None)
-        if rest_client is None:
+        streams_api = get_streams_api(self.hass)
+        if streams_api is None:
             _LOGGER.warning(
                 "go2rtc is unavailable; live video remains available but two-way audio is disabled"
             )
@@ -98,20 +96,21 @@ class VideolinkWebCamera(Camera):
             self._channel, self._stream, self._rtsp_port
         )
         try:
-            streams = await rest_client.streams.list()
+            streams = await streams_api.list()
             expected = {flv_url, rtsp_url}
-            current = {
-                producer.url
-                for producer in streams.get(identifier, ()).producers
-            } if identifier in streams else set()
+            current = (
+                {producer.url for producer in streams.get(identifier, ()).producers}
+                if identifier in streams
+                else set()
+            )
             if expected.issubset(current):
                 return
-            await rest_client.streams.add(
+            await streams_api.add(
                 identifier,
                 [
                     flv_url,
                     rtsp_url,
-                    f"ffmpeg:{identifier}#audio=opus#query=log_level=debug",
+                    f"ffmpeg:{identifier}#audio=opus",
                 ],
             )
         except Exception:  # noqa: BLE001 - video should survive provider failures
