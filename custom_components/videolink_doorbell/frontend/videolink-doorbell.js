@@ -12,8 +12,12 @@ class VideolinkDoorbellCard extends HTMLElement {
     this._audioSender = undefined;
     this._sessionId = undefined;
     this._pendingCandidates = [];
+    this._pendingRemoteCandidates = [];
     this._unsubscribe = undefined;
-    this._starting = false;
+    this._startingGeneration = undefined;
+    this._connectionGeneration = 0;
+    this._reconnectTimer = undefined;
+    this._reconnectAttempt = 0;
     this._streamReady = false;
     this._micPending = false;
     this._talking = false;
@@ -68,6 +72,7 @@ class VideolinkDoorbellCard extends HTMLElement {
     const previous = this._config;
     const changed = previous?.entity !== config.entity;
     const mediaChanged = changed || previous?.hide_video !== Boolean(config.hide_video);
+    const controlsHidden = !previous?.hide_controls && Boolean(config.hide_controls);
     const videoFit = ["cover", "contain", "fill", "full"].includes(config.video_fit)
       ? config.video_fit
       : "contain";
@@ -81,6 +86,7 @@ class VideolinkDoorbellCard extends HTMLElement {
       video_fit: videoFit,
     };
     if (!previous || changed) this._muted = true;
+    if (controlsHidden) this._stopMicrophone();
     this._render();
     if (mediaChanged && this.isConnected) {
       this._restart();
@@ -114,10 +120,12 @@ class VideolinkDoorbellCard extends HTMLElement {
     this._render();
     this._start();
     document.addEventListener("visibilitychange", this._visibilityHandler);
+    window.addEventListener("blur", this._windowBlurHandler);
   }
 
   disconnectedCallback() {
     document.removeEventListener("visibilitychange", this._visibilityHandler);
+    window.removeEventListener("blur", this._windowBlurHandler);
     this._cleanup();
   }
 
@@ -127,6 +135,10 @@ class VideolinkDoorbellCard extends HTMLElement {
     } else {
       this._start();
     }
+  };
+
+  _windowBlurHandler = () => {
+    this._endTalk();
   };
 
   _render() {
@@ -190,6 +202,7 @@ class VideolinkDoorbellCard extends HTMLElement {
 
     this._video = this.shadowRoot.querySelector("video, audio");
     this._video.muted = this._muted;
+    this._attachRemoteStream();
     this._status = this.shadowRoot.querySelector(".status");
     this._talkButton = this.shadowRoot.querySelector(".talk");
     this._soundButton = this.shadowRoot.querySelector(".sound");
@@ -200,6 +213,8 @@ class VideolinkDoorbellCard extends HTMLElement {
     this._talkButton?.addEventListener("pointerup", this._endTalk);
     this._talkButton?.addEventListener("pointercancel", this._endTalk);
     this._talkButton?.addEventListener("pointerleave", this._endTalk);
+    this._talkButton?.addEventListener("lostpointercapture", this._endTalk);
+    this._talkButton?.addEventListener("blur", this._endTalk);
     this._talkButton?.addEventListener("keydown", this._talkKeyDown);
     this._talkButton?.addEventListener("keyup", this._talkKeyUp);
     this._soundButton?.addEventListener("click", this._toggleSound);
@@ -217,6 +232,21 @@ class VideolinkDoorbellCard extends HTMLElement {
     this._updateDiagnosticsView();
     if (this._config.debug && this._peer) this._startDiagnostics();
     else if (!this._config.debug) this._stopDiagnostics();
+  }
+
+  _attachRemoteStream() {
+    if (!this._video || !this._remoteStream) return;
+    this._video.srcObject = this._remoteStream;
+    this._video.muted = this._muted;
+    this._video.play().catch(() => {
+      if (!this._muted) {
+        this._muted = true;
+        this._video.muted = true;
+        this._updateSoundButton();
+        this._setStatus("Tap the speaker button to enable audio");
+        this._video.play().catch(() => undefined);
+      }
+    });
   }
 
   _updateTitle() {
@@ -245,9 +275,24 @@ class VideolinkDoorbellCard extends HTMLElement {
     await this._start();
   }
 
+  _isCurrentConnection(generation) {
+    return generation === this._connectionGeneration && this.isConnected && !document.hidden;
+  }
+
+  _scheduleReconnect(immediate = false) {
+    if (this._reconnectTimer !== undefined || !this.isConnected || document.hidden) return;
+    const delay = immediate ? 0 : Math.min(30000, 1000 * (2 ** this._reconnectAttempt));
+    this._reconnectAttempt += 1;
+    this._reconnectTimer = window.setTimeout(() => {
+      this._reconnectTimer = undefined;
+      this._restart();
+    }, delay);
+  }
+
   async _start() {
-    if (this._starting || this._peer || !this._hass || !this._config || document.hidden) return;
-    this._starting = true;
+    if (this._startingGeneration !== undefined || this._peer || !this._hass || !this._config || document.hidden) return;
+    const generation = ++this._connectionGeneration;
+    this._startingGeneration = generation;
     this._streamReady = false;
     this._diagnostics = { startedAt: performance.now(), phase: "connecting" };
     this._updateTalkButton();
@@ -259,6 +304,7 @@ class VideolinkDoorbellCard extends HTMLElement {
         type: "camera/webrtc/get_client_config",
         entity_id: this._config.entity,
       });
+      if (!this._isCurrentConnection(generation)) return;
       const peer = new RTCPeerConnection(clientConfig.configuration);
       this._peer = peer;
       this._startDiagnostics();
@@ -266,24 +312,21 @@ class VideolinkDoorbellCard extends HTMLElement {
 
       this._remoteStream = new MediaStream();
       peer.ontrack = (event) => {
+        if (!this._isCurrentConnection(generation) || this._peer !== peer) return;
         this._remoteStream.addTrack(event.track);
-        if (this._video) {
-          this._video.srcObject = this._remoteStream;
-          this._video.muted = this._muted;
-          this._video.play().catch(() => {
-            if (!this._muted) {
-              this._muted = true;
-              this._video.muted = true;
-              this._updateSoundButton();
-              this._setStatus("Tap the speaker button to enable audio");
-              this._video.play().catch(() => undefined);
-            }
-          });
-        }
+        this._attachRemoteStream();
       };
-      peer.onicecandidate = (event) => this._handleLocalCandidate(event.candidate);
+      peer.onicecandidate = (event) => {
+        this._handleLocalCandidate(event.candidate, generation).catch((error) => {
+          if (this._isCurrentConnection(generation)) this._setStatus(`ICE failed: ${error?.message || error}`);
+        });
+      };
       peer.onconnectionstatechange = () => {
+        if (!this._isCurrentConnection(generation) || this._peer !== peer) return;
         if (peer.connectionState === "connected") {
+          if (this._reconnectTimer !== undefined) window.clearTimeout(this._reconnectTimer);
+          this._reconnectTimer = undefined;
+          this._reconnectAttempt = 0;
           this._streamReady = true;
           this._diagnostics.phase = "connected";
           this._diagnostics.connectMs = performance.now() - this._diagnostics.startedAt;
@@ -295,6 +338,7 @@ class VideolinkDoorbellCard extends HTMLElement {
           this._diagnostics.phase = peer.connectionState;
           this._setStatus(`WebRTC ${peer.connectionState}`);
           this._updateTalkButton();
+          this._scheduleReconnect(peer.connectionState === "failed");
         }
       };
 
@@ -305,48 +349,66 @@ class VideolinkDoorbellCard extends HTMLElement {
         offerToReceiveVideo: !this._audioOnly,
       });
       await peer.setLocalDescription(offer);
+      if (!this._isCurrentConnection(generation) || this._peer !== peer) {
+        peer.close();
+        return;
+      }
 
       this._unsubscribe = this._hass.connection.subscribeMessage(
-        (event) => this._handleSignal(event),
+        (event) => this._handleSignal(event, generation).catch((error) => {
+          if (this._isCurrentConnection(generation)) {
+            this._setStatus(`WebRTC signaling failed: ${error?.message || error}`);
+            this._scheduleReconnect();
+          }
+        }),
         { type: "camera/webrtc/offer", entity_id: this._config.entity, offer: offer.sdp }
       );
     } catch (error) {
-      this._setStatus(error?.message || String(error));
-      await this._cleanup(false);
+      if (generation === this._connectionGeneration) {
+        this._setStatus(error?.message || String(error));
+        await this._cleanup(false);
+        this._scheduleReconnect();
+      }
     } finally {
-      this._starting = false;
+      if (this._startingGeneration === generation) this._startingGeneration = undefined;
     }
   }
 
-  async _handleSignal(event) {
-    if (!this._peer) return;
+  async _handleSignal(event, generation) {
+    if (!this._isCurrentConnection(generation) || !this._peer) return;
     if (event.type === "session") {
       this._sessionId = event.session_id;
       for (const candidate of this._pendingCandidates.splice(0)) {
-        await this._sendCandidate(candidate);
+        await this._sendCandidate(candidate, generation);
       }
     } else if (event.type === "answer") {
       await this._peer.setRemoteDescription({ type: "answer", sdp: event.answer });
+      for (const candidate of this._pendingRemoteCandidates.splice(0)) {
+        await this._peer.addIceCandidate(candidate);
+      }
     } else if (event.type === "candidate") {
       const candidate = { ...event.candidate };
       if (candidate.sdpMid == null && candidate.sdpMLineIndex == null) candidate.sdpMid = "0";
-      await this._peer.addIceCandidate(candidate);
+      if (this._peer.remoteDescription) await this._peer.addIceCandidate(candidate);
+      else this._pendingRemoteCandidates.push(candidate);
     } else if (event.type === "error") {
       this._setStatus(`WebRTC failed: ${event.message}`);
       await this._cleanup(false);
+      this._scheduleReconnect();
     }
   }
 
-  async _handleLocalCandidate(candidate) {
-    if (!candidate?.candidate) return;
+  async _handleLocalCandidate(candidate, generation) {
+    if (!candidate?.candidate || !this._isCurrentConnection(generation)) return;
     if (!this._sessionId) {
       this._pendingCandidates.push(candidate.toJSON());
       return;
     }
-    await this._sendCandidate(candidate.toJSON());
+    await this._sendCandidate(candidate.toJSON(), generation);
   }
 
-  _sendCandidate(candidate) {
+  _sendCandidate(candidate, generation) {
+    if (!this._isCurrentConnection(generation) || !this._sessionId) return Promise.resolve();
     return this._hass.callWS({
       type: "camera/webrtc/candidate",
       entity_id: this._config.entity,
@@ -382,8 +444,19 @@ class VideolinkDoorbellCard extends HTMLElement {
         return;
       }
       const track = this._micStream.getAudioTracks()[0];
+      if (!track) throw new Error("Browser did not provide a microphone audio track");
+      const sender = this._audioSender;
+      if (!sender) throw new Error("WebRTC audio sender is unavailable");
       this._outboundPacketsAtAttach = await this._getOutboundAudioPackets();
-      await this._audioSender.replaceTrack(track);
+      if (!this._talkRequested || track.readyState === "ended") {
+        await this._stopMicrophone();
+        return;
+      }
+      await sender.replaceTrack(track);
+      if (!this._talkRequested || sender !== this._audioSender) {
+        await this._stopMicrophone();
+        return;
+      }
       this._diagnostics.trackAttachedAt = performance.now();
       this._diagnostics.trackAttachMs = this._diagnostics.trackAttachedAt - this._diagnostics.micRequestedAt;
       this._talking = true;
@@ -424,8 +497,8 @@ class VideolinkDoorbellCard extends HTMLElement {
   async _stopMicrophone() {
     const restoreMuted = this._talking ? this._mutedBeforeTalk : undefined;
     this._talkRequested = false;
-    if (this._audioSender) await this._audioSender.replaceTrack(null).catch(() => undefined);
     this._micStream?.getTracks().forEach((track) => track.stop());
+    const sender = this._audioSender;
     this._micStream = undefined;
     this._talking = false;
     this._micPending = false;
@@ -437,6 +510,7 @@ class VideolinkDoorbellCard extends HTMLElement {
     if (this._soundButton) this._soundButton.disabled = false;
     this._updateSoundButton();
     this._updateTalkButton();
+    if (sender) await sender.replaceTrack(null).catch(() => undefined);
   }
 
   _toggleSound = () => {
@@ -571,6 +645,10 @@ class VideolinkDoorbellCard extends HTMLElement {
   };
 
   async _cleanup(clearStatus = true) {
+    this._connectionGeneration += 1;
+    this._startingGeneration = undefined;
+    if (this._reconnectTimer !== undefined) window.clearTimeout(this._reconnectTimer);
+    this._reconnectTimer = undefined;
     this._streamReady = false;
     this._stopDiagnostics();
     await this._stopMicrophone();
@@ -581,6 +659,7 @@ class VideolinkDoorbellCard extends HTMLElement {
     this._audioSender = undefined;
     this._sessionId = undefined;
     this._pendingCandidates = [];
+    this._pendingRemoteCandidates = [];
     if (this._video) this._video.srcObject = null;
     if (this._unsubscribe) {
       const unsubscribe = await this._unsubscribe.catch(() => undefined);
