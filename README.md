@@ -22,6 +22,10 @@ Select `main` for the console's Clear stream or `sub` for Fluent.
 
 RTSP must be enabled for two-way audio, but video continues to use FLV.
 
+Connection, credential, channel, stream, and certificate settings can be updated
+from the integration's **Reconfigure** action. Authentication failures prompt for
+replacement credentials without requiring the integration to be removed.
+
 ## Two-way audio
 
 Home Assistant's built-in go2rtc integration combines the FLV video producer with an RTSP audio-backchannel producer. Open the camera through a WebRTC-capable card and grant the browser microphone permission. Two-way audio depends on the camera firmware exposing a compatible RTSP/ONVIF backchannel; unsupported models continue to provide video and camera-to-browser audio normally.
@@ -70,4 +74,6 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ```bash
 python -m compileall custom_components/videolink_doorbell
+python -m pytest -q tests/test_api.py tests/test_go2rtc_adapter.py
+node --test tests/videolink-card.test.js
 ```

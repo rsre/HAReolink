@@ -2,6 +2,31 @@
 
 All notable changes are documented here. This project follows Semantic Versioning.
 
+## Unreleased
+
+### Added
+
+- Added validated reconfiguration and reauthentication flows.
+- Added Python API/compatibility tests and frontend card tests to CI.
+
+### Fixed
+
+- Made token renewal concurrency-safe and retried snapshots after session expiry.
+- Validated camera hosts, including IPv6 URL formatting.
+- Prevented stale WebRTC startup operations, buffered early ICE candidates, and
+  added bounded reconnection after connection failures.
+- Preserved active media across presentation-only card edits and added additional
+  safeguards for releasing push-to-talk microphone capture.
+- Included the channel in config-entry identity so multiple device channels can
+  be configured independently.
+
+### Changed
+
+- Isolated the private go2rtc multi-producer compatibility boundary and removed
+  unconditional FFmpeg debug logging.
+- Pinned CI actions to immutable revisions and added automated unit-test jobs.
+- Renamed the frontend source file to match the public card name.
+
 ## [0.11.0] - 2026-09-10
 
 ### Added
